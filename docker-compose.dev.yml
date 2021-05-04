@@ -1,0 +1,13 @@
+version: "3"
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gh-trs-dev
+    container_name: gh-trs-dev
+    volumes:
+      - ${PWD}:/app
+    restart: on-failure
+    working_dir: /app
+    command: ["sleep", "infinity"]

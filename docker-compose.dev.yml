@@ -8,6 +8,8 @@ services:
     container_name: gh-trs-dev
     volumes:
       - ${PWD}:/app
+    environment:
+      - RUST_BACKTRACE=1
     restart: on-failure
-    working_dir: /app
+    working_dir: /gh-trs
     command: ["sleep", "infinity"]

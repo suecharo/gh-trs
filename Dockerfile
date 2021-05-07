@@ -10,5 +10,7 @@ RUN apt update && \
 WORKDIR /app
 COPY . .
 
+ENV RUST_BACKTRACE=1
+
 ENTRYPOINT ["tini", "--"]
 CMD ["sleep", "infinity"]

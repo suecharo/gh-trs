@@ -11,5 +11,5 @@ services:
     environment:
       - RUST_BACKTRACE=1
     restart: on-failure
-    working_dir: /gh-trs
+    working_dir: /app
     command: ["sleep", "infinity"]

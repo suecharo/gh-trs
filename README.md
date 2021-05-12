@@ -1,81 +1,52 @@
-# gh-trs
+# gh-trs: your own API fully based on GitHub to serve workflow metadata
 
-[Test 用 repository](https://github.com/suecharo/gh-trs-test-repo)
-[GitHub - tschaub/gh-pages](https://github.com/tschaub/gh-pages)
+[![Apache License](https://img.shields.io/badge/license-Apache%202.0-orange.svg?style=flat&color=important)](http://www.apache.org/licenses/LICENSE-2.0)
 
-## usage
+Global Alliance for Genomics and Health (GA4GH) Cloud Workstream has created Workflow Execution Service (WES) and Tool Registry Service (TRS) standard definitions for executing and sharing workflows. Based on our experience in developing WES, the current TRS definition lacks information such as workflow attachments (e.g., configuration files and database files, etc.) and workflow parameter templates (e.g., required inputs and their type information). Therefore, there is a problem that workflows cannot be executed even if the TRS URL is specified. Also, there are existing TRSs (e.g., Dockstore, BioContainers, etc.) that use GitHub as the registry entity. Here, we propose a TRS publication protocol by combining GitHub (file hosting, user authentication, and version management), GitHub Actions (continuous testing, workflow analysis), and GitHub Pages (REST API hosting). This allows users to retrieve information for workflow execution from the GitHub repository hosting the workflow documents via TRS definitions.
 
-workflow とか `gh-trs.yml` がある git repository で `gh-trs` command で、`gh-pages` branch に REST API, github actions を deploy する
+## Installation
 
----
+A binary for linux is available.
 
-```
-cwltool --validate
-cwltool --make-template
-cwltool --pack
-cwltool --graph
-```
-
-実際の CI 処理
-
----
-
-deploy した後、もう一度 github actions が回る。それまでは status pending にしておく。
-
-## エラー処理
-
-- `branch already exists`
-  - `gh-pages` branch が既に存在している場合
-
-## gh-pages
+## Usage
 
 ```
-ubuntu@dh236 ~> gh-pages --help
-Usage: gh-pages [options]
+/gh-trs --help
+gh-trs 0.1.0
 
-Options:
-  -V, --version            output the version number
-  -d, --dist <dist>        Base directory for all source files
-  -s, --src <src>          Pattern used to select which files to publish (default: "**/*")
-  -b, --branch <branch>    Name of the branch you are pushing to (default: "gh-pages")
-  -e, --dest <dest>        Target directory within the destination branch (relative to the root) (default: ".")
-  -a, --add                Only add, and never remove existing files
-  -x, --silent             Do not output the repository url
-  -m, --message <message>  commit message (default: "Updates")
-  -g, --tag <tag>          add tag to commit
-  --git <git>              Path to git executable (default: "git")
-  -t, --dotfiles           Include dotfiles
-  -r, --repo <repo>        URL of the repository you are pushing to
-  -p, --depth <depth>      depth for clone (default: 1)
-  -o, --remote <name>      The name of the remote (default: "origin")
-  -u, --user <address>     The name and email of the user (defaults to the git config).  Format is "Your Name <email@example.com>".
-  -v, --remove <pattern>   Remove files that match the given pattern (ignored if used together with --add). (default: ".")
-  -n, --no-push            Commit only (with no push)
-  -f, --no-history         Push force new commit without parent history
-  --before-add <file>      Execute the function exported by <file> before "git add"
-  -h, --help               output usage information
+USAGE:
+    gh-trs [OPTIONS] [config-file]
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -b, --branch <branch>              Name of the branch you are pushing to [default: gh-pages]
+        --dest <dest>                  Target directory within the destination branch (relative to the root) [default:
+                                       .]
+        --environment <environment>    Environment the service is running in. Suggested values are prod, test, dev,
+                                       staging [default: prod]
+        --git <git>                    Path to git executable [default: git]
+    -m, --message <message>            Commit message [default: 'Updates by gh-trs.']
+    -r, --remote <remote>              Name of the remote [default: origin]
+        --repo-url <repo-url>          GitHub repository URL (default: URL of the git repository you are in) [default: ]
+    -t, --tag <tag>                    Add tag to commit [default: ]
+        --user-email <user-email>      User email used for git commit (defaults to the git config) [default: ]
+        --user-name <user-name>        User name used for git commit (defaults to the git config) [default: ]
+
+ARGS:
+    <config-file>    Path or URL to the gh-trs config file [default: gh-trs.yml]
 ```
 
-## GitHub pages rest api
+## Outline drawing
 
-- https://wiredcraft.com/blog/static-rest-apis-on-github-pages/
-- https://towardsdatascience.com/using-github-pages-for-creating-global-api-76b296c4b3b5
-  - json を置く
+[gh-trs Outline Drawing](https://i.imgur.com/aP5hnQS.png)
 
-commit id を directory にする案
-directory 構造で切り替える
+## Acknowledgement
 
-`.nojekyll`
+The gh-trs is partially supported by JSPS KAKENHI Grant Numbers 20J22439.
 
-https://github.com/Kanahiro/gh-pages-rest-api
+## License
 
-`index.html` として置く (中身は json)
-
----
-
-- https://www.ga4gh.org/news/tool-registry-service-api-enabling-an-interoperable-library-of-genomics-analysis-tools/
-- https://github.com/ga4gh/tool-registry-service-schemas
-
-local の file path を github rawcontent に変える機能
-
-push とか commit に残りがないか確認する
+[Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0). See the [LICENSE](https://github.com/suecharo/gh-trs/blob/master/LICENSE).

@@ -3,7 +3,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-dev
     image: gh-trs-dev
     container_name: gh-trs-dev
     volumes:

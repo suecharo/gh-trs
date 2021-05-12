@@ -70,3 +70,12 @@ directory 構造で切り替える
 https://github.com/Kanahiro/gh-pages-rest-api
 
 `index.html` として置く (中身は json)
+
+---
+
+- https://www.ga4gh.org/news/tool-registry-service-api-enabling-an-interoperable-library-of-genomics-analysis-tools/
+- https://github.com/ga4gh/tool-registry-service-schemas
+
+local の file path を github rawcontent に変える機能
+
+push とか commit に残りがないか確認する

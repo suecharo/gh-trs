@@ -1,0 +1,60 @@
+tools:
+  - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/cwltool/trimming_and_qc.cwl
+    language_type: CWL
+    testing:
+      attachments:
+        - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/cwltool/ERR034597_1.small.fq.gz
+        - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/cwltool/ERR034597_2.small.fq.gz
+  - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/cromwell/dockstore-tool-bamstats/Dockstore.cwl
+    language_type: CWL
+    testing:
+      attachments:
+        - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/cromwell/dockstore-tool-bamstats/test.json
+        - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/cromwell/dockstore-tool-bamstats/tiny.bam
+  - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/cromwell/dockstore-tool-bamstats/Dockstore.wdl
+    language_type: WDL
+    testing:
+      attachments:
+        - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/cromwell/dockstore-tool-bamstats/test.wdl.json
+        - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/cromwell/dockstore-tool-bamstats/tiny.bam
+  - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/nextflow/str_input.nf
+    language_type: Nextflow
+  - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/nextflow/params_outdir.nf
+    language_type: Nextflow
+  - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/nextflow/file_input.nf
+    language_type: Nextflow
+    testing:
+      attachments:
+        - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/nextflow/nf_test_input.txt
+  - url: https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/Snakefile
+    language_type: Snakemake
+    testing:
+      attachments:
+        - target: "scripts/plot-quals.py"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/scripts/plot-quals.py"
+        - target: "envs/stats.yaml"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/envs/stats.yaml"
+        - target: "envs/calling.yaml"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/envs/calling.yaml"
+        - target: "envs/mapping.yaml"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/envs/mapping.yaml"
+        - target: "data/samples/A.fastq"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/data/samples/A.fastq"
+        - target: "data/samples/B.fastq"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/data/samples/B.fastq"
+        - target: "data/samples/C.fastq"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/data/samples/C.fastq"
+        - target: "data/genome.fa"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/data/genome.fa"
+        - target: "data/genome.fa.amb"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/data/genome.fa.amb"
+        - target: "data/genome.fa.fai"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/data/genome.fa.fai"
+        - target: "data/genome.fa.sa"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/data/genome.fa.sa"
+        - target: "data/genome.fa.pac"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/data/genome.fa.pac"
+        - target: "data/genome.fa.ann"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/data/genome.fa.ann"
+        - target: "data/genome.fa.bwt"
+          url: "https://github.com/suecharo/gh-trs/blob/main/tests/resources/snakemake/data/genome.fa.bwt"

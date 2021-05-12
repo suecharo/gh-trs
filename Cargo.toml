@@ -1,0 +1,18 @@
+[package]
+name = "gh-trs"
+version = "0.1.0"
+authors = ["suecharo <suehiro619@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = "0.4"
+path-clean = "0.1.0"
+reqwest = { version = "0.11", features = ["blocking", "json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.8"
+structopt = "0.3"
+temp-dir = "0.1"
+url = { version = "2.0", features = ["serde"] }

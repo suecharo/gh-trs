@@ -1,9 +1,14 @@
 use crate::git;
+use crate::Scheme;
 
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::BufReader;
+use std::path::Path;
 
+use anyhow::ensure;
+use anyhow::{Context, Result};
+use git::RepoUrl;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_yaml;
@@ -14,21 +19,21 @@ use url::Url;
 /// 2. URL of the git repository in cwd
 ///
 /// Output error if host is not github.com
-pub fn resolve_repository_url(git: &str, remote: &str, opt_repo_url: &str) -> Url {
-    let repo_url: Url;
-    if opt_repo_url == "" {
-        repo_url = git::get_repo_url(git, remote);
-    } else {
-        repo_url = Url::parse(opt_repo_url).unwrap();
-    }
-    if repo_url.host_str().unwrap() != "github.com" {
-        eprintln!("The repository url is not `github.com`.");
-        process::exit(1);
-    }
-
-    repo_url
+pub fn resolve_repository_url(
+    git: &str,
+    cwd: &Path,
+    remote: &str,
+    opt_repo_url: &Option<String>,
+    opt_scheme: &Scheme,
+) -> Result<RepoUrl> {
+    let repo_url = match opt_repo_url {
+        Some(string_url) => RepoUrl::new(&string_url, opt_scheme)?,
+        None => git::get_repo_url(git, cwd, remote, opt_scheme)?,
+    };
+    Ok(repo_url)
 }
 
+#[derive(Debug)]
 pub struct CommitUser {
     pub name: String,
     pub email: String,
@@ -37,24 +42,27 @@ pub struct CommitUser {
 /// priority;
 /// 1. Command line options
 /// 2. name and email of the git repository in cwd
-pub fn resolve_commit_user(git: &str, opt_name: &str, opt_email: &str) -> CommitUser {
-    let mut commit_user = CommitUser {
-        name: opt_name.to_string(),
-        email: opt_email.to_string(),
+pub fn resolve_commit_user(
+    git: &str,
+    cwd: &Path,
+    opt_name: &Option<String>,
+    opt_email: &Option<String>,
+) -> Result<CommitUser> {
+    let commit_user = CommitUser {
+        name: match opt_name {
+            Some(name) => name.to_string(),
+            None => git::get_user_name(git, cwd)?,
+        },
+        email: match opt_email {
+            Some(email) => email.to_string(),
+            None => git::get_user_email(git, cwd)?,
+        },
     };
-    if opt_name == "" {
-        commit_user.name = git::get_user_name(git);
-    }
-    if opt_email == "" {
-        commit_user.email = git::get_user_email(git);
-    }
-
-    if commit_user.name == "" || commit_user.email == "" {
-        eprintln!("Please set the name and email of the user to commit to.");
-        process::exit(1);
-    }
-
-    commit_user
+    ensure!(
+        commit_user.name != "" && commit_user.email != "",
+        "Please set the name and email of the user to commit to."
+    );
+    Ok(commit_user)
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -81,61 +89,59 @@ pub struct Testing {
     attachments: Vec<Attachment>,
 }
 
-#[derive(Debug)]
-enum PathType {
-    LocalFile(PathBuf),
-    HttpUrl(Url),
-}
-
-fn determine_path_type(path: &str) -> Option<PathType> {
-    match Url::parse(path) {
+pub fn load_config(config_file: &str) -> Result<Config> {
+    let config_content = match Url::parse(config_file) {
         Ok(url) => {
-            if url.scheme() == "http" || url.scheme() == "https" {
-                Some(PathType::HttpUrl(url))
-            } else {
-                None
-            }
+            let response = reqwest::blocking::get(url.as_str())
+                .with_context(|| format!("Failed to get from remote URL: {:?}", url.as_str()))?;
+            ensure!(
+                response.status().is_success(),
+                format!("Failed to get from remote URL: {:?}", url)
+            );
+            response.text().context("Failed to decode response body.")?
         }
-        Err(_) => Some(PathType::LocalFile(Path::new(path).to_path_buf())),
-    }
-}
-
-fn get_remote_url_content<T: AsRef<str>>(url: T) -> String {
-    reqwest::blocking::get(url.as_ref())
-        .unwrap()
-        .text()
-        .unwrap()
-}
-
-pub fn load_config(config_file: &str) -> Config {
-    let config_file_path = determine_path_type(config_file).unwrap();
-    let config_content = match config_file_path {
-        PathType::LocalFile(file) => {
-            let absolute_file = file.canonicalize().unwrap();
-            fs::read_to_string(absolute_file).unwrap()
+        Err(_) => {
+            let config_file_path = Path::new(config_file)
+                .canonicalize()
+                .context("Failed to resolve config file path.")?;
+            let mut reader =
+                BufReader::new(File::open(config_file_path.as_path()).with_context(|| {
+                    format!("Failed to open file: {:?}", config_file_path.as_path())
+                })?);
+            let mut content = String::new();
+            reader.read_to_string(&mut content).with_context(|| {
+                format!("Failed to read file: {:?}", config_file_path.as_path())
+            })?;
+            content
         }
-        PathType::HttpUrl(url) => get_remote_url_content(url),
     };
-
-    let config: Config = serde_yaml::from_str(&config_content).unwrap();
-    // TODO validate config
-
-    config
+    let config: Config =
+        serde_yaml::from_str(&config_content).context("Failed to deserialize config content.")?;
+    Ok(config)
 }
 
-pub fn repo_owner(repo_url: &Url) -> String {
-    repo_url
+pub fn repo_owner(repo_url: &RepoUrl) -> Result<String> {
+    let path_segments = repo_url
+        .https
         .path_segments()
         .map(|c| c.collect::<Vec<_>>())
-        .unwrap()[0]
-        .to_string()
+        .with_context(|| format!("Failed to parse of the repository URL: {:?}", repo_url))?;
+    ensure!(
+        path_segments.len() >= 2,
+        "The path length of the repository URL is too short."
+    );
+    Ok(path_segments[0].to_string())
 }
 
-pub fn repo_name(repo_url: &Url) -> String {
-    repo_url
+pub fn repo_name(repo_url: &RepoUrl) -> Result<String> {
+    let path_segments = repo_url
+        .https
         .path_segments()
         .map(|c| c.collect::<Vec<_>>())
-        .unwrap()[1]
-        .to_string()
-        .replace(".git", "")
+        .with_context(|| format!("Failed to parse of the repository URL: {:?}", repo_url))?;
+    ensure!(
+        path_segments.len() >= 2,
+        "The path length of the repository URL is too short."
+    );
+    Ok(path_segments[1].to_string().replace(".git", ""))
 }

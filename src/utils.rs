@@ -6,7 +6,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
 
-use anyhow::ensure;
+use anyhow::{anyhow, ensure};
 use anyhow::{Context, Result};
 use git::RepoUrl;
 use reqwest;
@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 use serde_yaml;
 use url::Url;
 
-/// priority;
+/// Priority:
+///
 /// 1. Command line options
 /// 2. URL of the git repository in cwd
 ///
@@ -39,7 +40,8 @@ pub struct CommitUser {
     pub email: String,
 }
 
-/// priority;
+/// Priority:
+///
 /// 1. Command line options
 /// 2. name and email of the git repository in cwd
 pub fn resolve_commit_user(
@@ -120,12 +122,14 @@ pub fn load_config(config_file: &str) -> Result<Config> {
     Ok(config)
 }
 
+// fn validate_with_json_schema() -> Result<()> {}
+
 pub fn repo_owner(repo_url: &RepoUrl) -> Result<String> {
     let path_segments = repo_url
         .https
         .path_segments()
-        .map(|c| c.collect::<Vec<_>>())
-        .with_context(|| format!("Failed to parse of the repository URL: {:?}", repo_url))?;
+        .ok_or(anyhow!("Failed to parse path in parsed URL."))?
+        .collect::<Vec<&str>>();
     ensure!(
         path_segments.len() >= 2,
         "The path length of the repository URL is too short."
@@ -137,11 +141,63 @@ pub fn repo_name(repo_url: &RepoUrl) -> Result<String> {
     let path_segments = repo_url
         .https
         .path_segments()
-        .map(|c| c.collect::<Vec<_>>())
-        .with_context(|| format!("Failed to parse of the repository URL: {:?}", repo_url))?;
+        .ok_or(anyhow!("Failed to parse path in parsed URL."))?
+        .collect::<Vec<&str>>();
     ensure!(
         path_segments.len() >= 2,
         "The path length of the repository URL is too short."
     );
     Ok(path_segments[1].to_string().replace(".git", ""))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    mod resolve_repository_url {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            assert!(resolve_repository_url(
+                "git",
+                &env::current_dir().unwrap(),
+                "origin",
+                &Some("https://github.com/suecharo/gh-trs.git".to_string()),
+                &Scheme::Https,
+            )
+            .is_ok());
+            assert!(resolve_repository_url(
+                "git",
+                &env::current_dir().unwrap(),
+                "origin",
+                &None,
+                &Scheme::Https,
+            )
+            .is_ok());
+        }
+    }
+
+    mod repo_owner {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            assert_eq!(repo_owner(&repo_url).unwrap(), "suecharo");
+        }
+    }
+
+    mod repo_name {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            assert_eq!(repo_name(&repo_url).unwrap(), "gh-trs");
+        }
+    }
 }

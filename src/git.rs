@@ -23,10 +23,10 @@ pub fn exec(git: &str, cwd: &Path, args: &[&str]) -> Result<Output> {
         .args(args);
     Ok(command
         .output()
-        .with_context(|| format!("Failed to execute command `{:?}`.", command))?)
+        .with_context(|| format!("Failed to execute command [{}].", command))?)
 }
 
-/// Confirm the existence of the git command,
+/// Confirm the existence of the git command.
 pub fn confirm_existence_of_git_command(git: &str, cwd: &Path) -> Result<()> {
     let result = exec(git, cwd, &["--help"])?;
     ensure!(
@@ -70,32 +70,35 @@ pub struct RepoUrl {
 }
 
 impl RepoUrl {
+    /// Expected repository URL:
+    ///
+    /// - https://github.com/suecharo/gh-trs.git
+    /// - ssh://git@github.com/suecharo/gh-trs.git
+    /// - git@github.com:suecharo/gh-trs.git
     pub fn new(repo_url: &str, scheme: &Scheme) -> Result<RepoUrl> {
-        let parsed_url = match Url::parse(repo_url) {
-            Ok(parsed_url) => parsed_url,
-            // for ssh
-            Err(_) => {
-                let re = Regex::new(r"^git@github\.com:[\w\-]*/[\w\-]*\.git$")
-                    .context("Failed to compile regular expression.")?;
-                if re.is_match(repo_url) {
-                    // like: git@github.com:suecharo/gh-trs.git
-                    Url::parse(&repo_url.replace("git@github.com:", "ssh://git@github.com/"))
-                        .context("Failed to parse git repository URL.")?
-                } else {
-                    bail!(format!(
-                        "The URL: {} is not a valid git repository URL.",
-                        repo_url
-                    ))
-                }
-            }
+        let re_https = Regex::new(r"^https://github\.com/[\w]*/[\w\-]*\.git$")
+            .context("Failed to compile regular expression.")?;
+        let re_ssh = Regex::new(r"^ssh://git@github\.com/[\w]*/[\w\-]*\.git$")
+            .context("Failed to compile regular expression.")?;
+        let re_ssh_github = Regex::new(r"^git@github\.com:[\w]*/[\w\-]*\.git$")
+            .context("Failed to compile regular expression.")?;
+
+        let parsed_url = if re_https.is_match(repo_url) {
+            Url::parse(repo_url)
+                .with_context(|| format!("Failed to parse the URL: {}", repo_url))?
+        } else if re_ssh.is_match(repo_url) {
+            Url::parse(repo_url)
+                .with_context(|| format!("Failed to parse the URL: {}", repo_url))?
+        } else if re_ssh_github.is_match(repo_url) {
+            Url::parse(&repo_url.replace("git@github.com:", "ssh://git@github.com/"))
+                .with_context(|| format!("Failed to parse the URL: {}", repo_url))?
+        } else {
+            bail!(format!(
+                "The URL: {} is not a valid git repository URL.",
+                repo_url
+            ))
         };
-        let host = parsed_url
-            .host_str()
-            .context("Failed to get the host of the repository URL.")?;
-        ensure!(
-            host == "github.com",
-            "Failed because the host of the repository URL is not github.com."
-        );
+
         if parsed_url.scheme() == "https" {
             let ssh_url = Url::parse(&format!("ssh://git@github.com{}", parsed_url.path()))
                 .context("Failed to parse the ssh URL.")?;
@@ -113,7 +116,7 @@ impl RepoUrl {
                 scheme: scheme.clone(),
             })
         } else {
-            bail!("The schema of the URL must be https or ssh.")
+            unreachable!()
         }
     }
 }
@@ -148,7 +151,7 @@ pub fn get_repo_url(git: &str, cwd: &Path, remote: &str, scheme: &Scheme) -> Res
 /// Clone git repository.
 /// 1. clone with branch and depth options
 /// 2. clone without branch or depth options
-pub fn clone(git: &str, cwd: &Path, repo_url: &RepoUrl, branch: &str, remote: &str) -> Result<()> {
+pub fn clone(git: &str, cwd: &Path, repo_url: &RepoUrl, branch: &str) -> Result<()> {
     let result = exec(
         git,
         cwd,
@@ -160,8 +163,6 @@ pub fn clone(git: &str, cwd: &Path, repo_url: &RepoUrl, branch: &str, remote: &s
             "--branch",
             branch,
             "--single-branch",
-            "--origin",
-            remote,
             "--depth",
             "1",
         ],
@@ -176,8 +177,6 @@ pub fn clone(git: &str, cwd: &Path, repo_url: &RepoUrl, branch: &str, remote: &s
                 &repo_url.to_string(),
                 cwd.to_str()
                     .ok_or(anyhow!("Failed to change the cwd to str."))?,
-                "--origin",
-                remote,
             ],
         )?;
         ensure!(
@@ -189,7 +188,7 @@ pub fn clone(git: &str, cwd: &Path, repo_url: &RepoUrl, branch: &str, remote: &s
 }
 
 /// Checkout a branch (create an orphan if it doesn't exist on the remote).
-pub fn checkout(git: &str, cwd: &Path, branch: &str, remote: &str) -> Result<()> {
+pub fn checkout(git: &str, cwd: &Path, branch: &str) -> Result<()> {
     let result = exec(
         git,
         cwd,
@@ -197,7 +196,7 @@ pub fn checkout(git: &str, cwd: &Path, branch: &str, remote: &str) -> Result<()>
             "ls-remote",
             "--exit-code",
             ".",
-            &format!("{}/{}", remote, branch),
+            &format!("origin/{}", branch),
         ],
     )?;
     if result.status.success() {
@@ -218,12 +217,16 @@ pub fn checkout(git: &str, cwd: &Path, branch: &str, remote: &str) -> Result<()>
     Ok(())
 }
 
-/// Remove all unversined files.
-pub fn rm_cache(git: &str, cwd: &Path) -> Result<()> {
-    let result = exec(git, cwd, &["rm", "--cached", "-r", "."])?;
+/// Delete ref to remove branch history.
+pub fn delete_ref(git: &str, cwd: &Path, branch: &str) -> Result<()> {
+    let result = exec(
+        git,
+        cwd,
+        &["update-ref", "-d", &format!("refs/heads/{}", branch)],
+    )?;
     ensure!(
         result.status.success(),
-        "In the git rm cache process, the exit status is non-zero."
+        "In the git delete-ref process, the exit status is non-zero."
     );
     Ok(())
 }
@@ -248,7 +251,7 @@ pub fn add(git: &str, cwd: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Set the commit user information for the git repository
+/// Set the commit user information for the git repository.
 pub fn set_commit_user(git: &str, cwd: &Path, commit_user: &CommitUser) -> Result<()> {
     let result = exec(git, cwd, &["config", "user.name", &commit_user.name])?;
     ensure!(
@@ -273,8 +276,6 @@ pub fn commit(git: &str, cwd: &Path, message: &str) -> Result<()> {
             result.status.success(),
             "In the git commit process, the exit status is non-zero."
         )
-    } else {
-        // No change.
     }
     Ok(())
 }
@@ -295,8 +296,8 @@ pub fn tag(git: &str, cwd: &Path, tag: &Option<String>) -> Result<()> {
 }
 
 /// Push a branch.
-pub fn push(git: &str, cwd: &Path, remote: &str, branch: &str) -> Result<()> {
-    let result = exec(git, cwd, &["push", "-f", "--tags", remote, branch])?;
+pub fn push(git: &str, cwd: &Path, branch: &str) -> Result<()> {
+    let result = exec(git, cwd, &["push", "-f", "--tags", "origin", branch])?;
     ensure!(
         result.status.success(),
         "In the git push process, the exit status is non-zero."
@@ -304,15 +305,267 @@ pub fn push(git: &str, cwd: &Path, remote: &str, branch: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn delete_ref(git: &str, cwd: &Path, branch: &str) -> Result<()> {
-    let result = exec(
-        git,
-        cwd,
-        &["update-ref", "-d", &format!("refs/heads/{}", branch)],
-    )?;
-    ensure!(
-        result.status.success(),
-        "In the git delete-ref process, the exit status is non-zero."
-    );
-    Ok(())
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::path::Path;
+    use temp_dir::TempDir;
+
+    mod exec {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            assert!(exec("git", &env::current_dir().unwrap(), &["--help"]).is_ok());
+        }
+
+        #[test]
+        fn err() {
+            assert!(exec("foobar", &env::current_dir().unwrap(), &[]).is_err());
+            assert!(exec("git", &Path::new("/foobar"), &[]).is_err());
+        }
+    }
+
+    mod confirm_existence_of_git_command {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            assert!(confirm_existence_of_git_command("git", &env::current_dir().unwrap()).is_ok());
+        }
+
+        #[test]
+        fn err() {
+            assert!(
+                confirm_existence_of_git_command("foobar", &env::current_dir().unwrap()).is_err()
+            );
+        }
+    }
+
+    mod repo_url {
+        use super::*;
+
+        #[test]
+        fn ok_https() {
+            let result = RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https);
+            assert!(result.is_ok());
+            let repo_url = result.unwrap();
+            assert_eq!(
+                repo_url.https,
+                Url::parse("https://github.com/suecharo/gh-trs.git").unwrap()
+            );
+            assert_eq!(
+                repo_url.ssh,
+                Url::parse("ssh://git@github.com/suecharo/gh-trs.git").unwrap()
+            );
+            assert_eq!(repo_url.scheme, Scheme::Https);
+        }
+
+        #[test]
+        fn ok_ssh() {
+            let result = RepoUrl::new("ssh://git@github.com/suecharo/gh-trs.git", &Scheme::Ssh);
+            assert!(result.is_ok());
+            let repo_url = result.unwrap();
+            assert_eq!(
+                repo_url.https,
+                Url::parse("https://github.com/suecharo/gh-trs.git").unwrap()
+            );
+            assert_eq!(
+                repo_url.ssh,
+                Url::parse("ssh://git@github.com/suecharo/gh-trs.git").unwrap()
+            );
+            assert_eq!(repo_url.scheme, Scheme::Ssh);
+        }
+
+        #[test]
+        fn ok_github_ssh() {
+            let result = RepoUrl::new("git@github.com:suecharo/gh-trs.git", &Scheme::Ssh);
+            assert!(result.is_ok());
+            let repo_url = result.unwrap();
+            assert_eq!(
+                repo_url.https,
+                Url::parse("https://github.com/suecharo/gh-trs.git").unwrap()
+            );
+            assert_eq!(
+                repo_url.ssh,
+                Url::parse("ssh://git@github.com/suecharo/gh-trs.git").unwrap()
+            );
+            assert_eq!(repo_url.scheme, Scheme::Ssh);
+        }
+
+        #[test]
+        fn err() {
+            assert!(RepoUrl::new("https://github.com/suecharo/gh-trs", &Scheme::Https).is_err());
+            assert!(RepoUrl::new(
+                "https://github.com/suecharo/foobar/gh-trs.git",
+                &Scheme::Https
+            )
+            .is_err());
+            assert!(
+                RepoUrl::new("https://foobar.com/suecharo/gh-trs.git", &Scheme::Https).is_err()
+            );
+        }
+    }
+
+    mod get_repo_url {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            let result = get_repo_url(
+                "git",
+                &env::current_dir().unwrap(),
+                "origin",
+                &Scheme::Https,
+            );
+            assert!(result.is_ok());
+            let repo_url = result.unwrap();
+            assert_eq!(
+                repo_url.https,
+                Url::parse("https://github.com/suecharo/gh-trs.git").unwrap()
+            );
+            assert_eq!(
+                repo_url.ssh,
+                Url::parse("ssh://git@github.com/suecharo/gh-trs.git").unwrap()
+            );
+            assert_eq!(repo_url.scheme, Scheme::Https);
+        }
+
+        #[test]
+        fn err() {
+            assert!(get_repo_url(
+                "git",
+                &env::current_dir().unwrap(),
+                "foobar",
+                &Scheme::Https
+            )
+            .is_err());
+        }
+    }
+
+    mod clone {
+        use super::*;
+
+        #[test]
+        fn ok_branch_exists() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            assert!(clone("git", &TempDir::new().unwrap().path(), &repo_url, "main").is_ok());
+        }
+
+        #[test]
+        fn ok_branch_not_exist() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            assert!(clone("git", &TempDir::new().unwrap().path(), &repo_url, "foobar").is_ok());
+        }
+    }
+
+    mod checkout {
+        use super::*;
+
+        #[test]
+        fn ok_branch_exists() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            assert!(checkout("git", &dest_dir.path(), "main").is_ok());
+        }
+
+        #[test]
+        fn ok_branch_not_exist() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            assert!(checkout("git", &dest_dir.path(), "foobar").is_ok());
+        }
+
+        #[test]
+        fn err() {
+            assert!(checkout("git", &Path::new("/tmp"), "main").is_err());
+        }
+    }
+
+    mod delete_ref {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            assert!(delete_ref("git", &dest_dir.path(), "main").is_ok());
+        }
+
+        #[test]
+        fn err() {
+            assert!(delete_ref("git", &Path::new("/tmp"), "main").is_err());
+        }
+    }
+
+    mod clean {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            assert!(clean("git", &dest_dir.path()).is_ok());
+        }
+
+        #[test]
+        fn err() {
+            assert!(clean("git", &Path::new("/tmp")).is_err());
+        }
+    }
+
+    mod add {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            assert!(add("git", &dest_dir.path()).is_ok());
+        }
+
+        #[test]
+        fn err() {
+            assert!(add("git", &Path::new("/tmp")).is_err());
+        }
+    }
+
+    mod set_commit_user {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            let commit_user = CommitUser {
+                name: "suecharo".to_string(),
+                email: "suehiro619@gmail.com".to_string(),
+            };
+            assert!(set_commit_user("git", &dest_dir.path(), &commit_user).is_ok());
+        }
+
+        #[test]
+        fn err() {
+            let commit_user = CommitUser {
+                name: "suecharo".to_string(),
+                email: "suehiro619@gmail.com".to_string(),
+            };
+            assert!(set_commit_user("git", &Path::new("/tmp"), &commit_user).is_err());
+        }
+    }
 }

@@ -19,7 +19,6 @@ use url::Url;
 /// - `https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl`
 ///
 /// If the url is not github.com or raw.githubusercontent.com, return an Error.
-///
 pub fn convert_github_raw_contents_url(file_url: &str) -> Result<Url> {
     let parsed_url = Url::parse(file_url)
         .with_context(|| format!("Failed to parse the input file URL: {}", file_url))?;
@@ -72,7 +71,7 @@ pub fn convert_github_raw_contents_url(file_url: &str) -> Result<Url> {
 
 /// Check if a str is in a 40 character git commit hash.
 fn is_commit_hash(hash: &str) -> Result<()> {
-    let re = Regex::new(r"[0-9a-f]{40}").context("Failed to compile regular expression.")?;
+    let re = Regex::new(r"^[0-9a-f]{40}$").context("Failed to compile regular expression.")?;
     if re.is_match(hash) {
         Ok(())
     } else {
@@ -149,21 +148,18 @@ mod tests {
         }
 
         #[test]
-        #[should_panic]
-        fn local_file_path() {
-            convert_github_raw_contents_url("/foo/bar.txt").unwrap();
+        fn err_local_file_path() {
+            assert!(convert_github_raw_contents_url("/foo/bar.txt").is_err());
         }
 
         #[test]
-        #[should_panic]
-        fn file_url() {
-            convert_github_raw_contents_url("file:///foo/bar.txt").unwrap();
+        fn err_file_url() {
+            assert!(convert_github_raw_contents_url("file:///foo/bar.txt").is_err());
         }
 
         #[test]
-        #[should_panic]
-        fn not_github_url() {
-            convert_github_raw_contents_url("https://test.com/foo/bar.txt").unwrap();
+        fn err_not_github_url() {
+            assert!(convert_github_raw_contents_url("https://test.com/foo/bar.txt").is_err());
         }
     }
 
@@ -172,16 +168,15 @@ mod tests {
 
         #[test]
         fn ok() {
-            is_commit_hash("0fb996810f153be9ad152565227a10e402950953").unwrap();
+            assert!(is_commit_hash("0fb996810f153be9ad152565227a10e402950953").is_ok());
         }
 
         #[test]
-        #[should_panic]
         fn err() {
-            is_commit_hash("foo").unwrap();
-            is_commit_hash("main").unwrap();
-            is_commit_hash("0fb996810f153be9ad").unwrap();
-            is_commit_hash("0fb996810f153be9ad152565227a10e402950953foo").unwrap();
+            assert!(is_commit_hash("foo").is_err());
+            assert!(is_commit_hash("main").is_err());
+            assert!(is_commit_hash("0fb996810f153be9ad").is_err());
+            assert!(is_commit_hash("0fb996810f153be9ad152565227a10e402950953foo").is_err());
         }
     }
 
@@ -190,13 +185,12 @@ mod tests {
 
         #[test]
         fn ok() {
-            get_latest_commit_hash("suecharo", "gh-trs", "main").unwrap();
+            assert!(get_latest_commit_hash("suecharo", "gh-trs", "main").is_ok());
         }
 
         #[test]
-        #[should_panic]
-        fn non_existent_branch_name() {
-            get_latest_commit_hash("suecharo", "gh-trs", "non_existent_branch").unwrap();
+        fn err_non_existent_branch_name() {
+            assert!(get_latest_commit_hash("suecharo", "gh-trs", "non_existent_branch").is_err());
         }
     }
 }

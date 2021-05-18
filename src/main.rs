@@ -5,14 +5,16 @@ mod utils;
 
 use std::env;
 use std::path::PathBuf;
+use std::process;
 
+use anyhow::{Context, Result};
 use human_panic::setup_panic;
 use structopt::clap::arg_enum;
 use structopt::{clap, StructOpt};
 use temp_dir::TempDir;
 
 arg_enum! {
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Eq, PartialEq)]
     pub enum Scheme {
         Https,
         Ssh
@@ -75,42 +77,42 @@ pub struct Opt {
     scheme: Scheme,
 }
 
-fn main() {
-    setup_panic!();
+fn run() -> Result<()> {
     let opt = Opt::from_args();
-    let cwd = env::current_dir().expect("Failed to get cwd in your environment.");
+    let cwd = env::current_dir().context("Failed to get cwd in your environment")?;
     git::confirm_existence_of_git_command(&opt.git, &cwd)
-        .expect("Failed to confirm the existence of the git command.");
+        .context("Failed to confirm the existence of the git command")?;
     let repo_url =
         utils::resolve_repository_url(&opt.git, &cwd, &opt.remote, &opt.repo_url, &opt.scheme)
-            .expect("Failed to resolve repository URL.");
+            .context("Failed to resolve the repository URL")?;
     let commit_user = utils::resolve_commit_user(&opt.git, &cwd, &opt.user_name, &opt.user_email)
-        .expect("Failed to resolve commit user.");
-    let _config = utils::load_config(&opt.config_file).expect("Failed to load config.");
-    let temp_dir = TempDir::new().expect("Failed to create temp dir.");
-    let dest_dir = temp_dir.path();
+        .context("Failed to resolve the commit user")?;
+    let _config = utils::load_config(&opt.config_file)
+        .context("Failed to load the gh-trs configuration file")?;
+    let dest_dir = TempDir::new().context("Failed to create temporary directory")?;
 
     println!("Cloning {} into {:?}", repo_url, dest_dir);
-    git::clone(&opt.git, &dest_dir, &repo_url, &opt.branch, &opt.remote)
-        .expect("Failed to clone git repository.");
+    git::clone(&opt.git, &dest_dir.path(), &repo_url, &opt.branch)
+        .context("Failed to clone the git repository")?;
     println!("Checking out {}/{}", opt.remote, opt.branch);
-    git::checkout(&opt.git, &dest_dir, &opt.branch, &opt.remote)
-        .expect("Failed to checkout git repository.");
+    git::checkout(&opt.git, &dest_dir.path(), &opt.branch)
+        .context("Failed to checkout the git repository")?;
     // TODO option history is true, not to do delete_ref
-    git::delete_ref(&opt.git, &dest_dir, &opt.branch).expect("Failed to delete ref.");
-    git::rm_cache(&opt.git, &dest_dir).expect("Failed to rm.");
-    git::clean(&opt.git, &dest_dir).expect("Failed to clean the git repository.");
+    git::delete_ref(&opt.git, &dest_dir.path(), &opt.branch)
+        .context("Failed to delete reference in the git repository")?;
+    git::clean(&opt.git, &dest_dir.path()).context("Failed to clean up the git repository")?;
     println!("Generating the TRS responses");
-    trs::generate_trs_responses(&opt, &repo_url, &commit_user, &dest_dir)
-        .expect("Failed to generate the TRS responses.");
+    trs::generate_trs_responses(&opt, &repo_url, &commit_user, &dest_dir.path())
+        .context("Failed to generate the TRS responses")?;
     println!("Adding all");
-    git::add(&opt.git, &dest_dir).expect("Failed to add.");
-    git::set_commit_user(&opt.git, &dest_dir, &commit_user).expect("Failed to set commit user.");
+    git::add(&opt.git, &dest_dir.path()).context("Failed to add")?;
+    git::set_commit_user(&opt.git, &dest_dir.path(), &commit_user)
+        .context("Failed to set the commit user")?;
     println!("Committing as {} <{}>", commit_user.name, commit_user.email);
-    git::commit(&opt.git, &dest_dir, &opt.message).expect("Failed to commit.");
+    git::commit(&opt.git, &dest_dir.path(), &opt.message).context("Failed to commit")?;
     if opt.tag.is_some() {
         println!("Tagging");
-        match git::tag(&opt.git, &dest_dir, &opt.tag) {
+        match git::tag(&opt.git, &dest_dir.path(), &opt.tag) {
             Err(e) => {
                 println!("{:?}", e);
                 println!("Tagging failed, continuing");
@@ -119,15 +121,29 @@ fn main() {
         }
     }
     println!("Pushing");
-    git::push(&opt.git, &dest_dir, &opt.remote, &opt.branch)
-        .expect("Failed to push git repository.");
+    git::push(&opt.git, &dest_dir.path(), &opt.branch)
+        .context("Failed to push the git repository")?;
     println!(
         "Your TRS has been deployed to {}",
-        trs::trs_url(&repo_url, &opt.dest).expect("Failed to get the TRS URL.")
+        trs::trs_url(&repo_url, &opt.dest).context("Failed to get the TRS URL")?
     );
     println!(
         "Please check `curl -X GET {}/service-info/`",
-        trs::trs_url(&repo_url, &opt.dest).expect("Failed to get the TRS URL.")
+        trs::trs_url(&repo_url, &opt.dest).context("Failed to get the TRS URL")?
     );
-    github::convert_github_raw_contents_url("FPP").unwrap();
+    Ok(())
+}
+
+fn main() {
+    setup_panic!();
+    let result = run();
+    match result {
+        Ok(_) => {
+            process::exit(0);
+        }
+        Err(e) => {
+            eprintln!("[Error]: {:?}", e);
+            process::exit(1);
+        }
+    }
 }

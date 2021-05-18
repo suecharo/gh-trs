@@ -1,4 +1,5 @@
 mod git;
+mod github;
 mod trs;
 mod utils;
 
@@ -128,4 +129,5 @@ fn main() {
         "Please check `curl -X GET {}/service-info/`",
         trs::trs_url(&repo_url, &opt.dest).expect("Failed to get the TRS URL.")
     );
+    github::convert_github_raw_contents_url("FPP").unwrap();
 }

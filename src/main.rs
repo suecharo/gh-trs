@@ -87,8 +87,12 @@ fn run() -> Result<()> {
             .context("Failed to resolve the repository URL")?;
     let commit_user = utils::resolve_commit_user(&opt.git, &cwd, &opt.user_name, &opt.user_email)
         .context("Failed to resolve the commit user")?;
-    let _config = utils::load_config(&opt.config_file)
-        .context("Failed to load the gh-trs configuration file")?;
+    let _config = utils::validate_and_convert_config(
+        &utils::load_config(&opt.config_file)
+            .context("Failed to load the gh-trs configuration file")?,
+    )
+    .context("Failed to validate and convert the gh-trs configuration file")?;
+
     let dest_dir = TempDir::new().context("Failed to create temporary directory")?;
 
     println!("Cloning {} into {:?}", repo_url, dest_dir);

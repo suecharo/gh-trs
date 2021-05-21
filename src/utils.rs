@@ -1,4 +1,5 @@
 use crate::git;
+use crate::github;
 use crate::Scheme;
 
 use std::fs::File;
@@ -72,7 +73,7 @@ pub struct Config {
     tools: Vec<Tool>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Tool {
     url: Url,
     language_type: String,
@@ -80,20 +81,67 @@ pub struct Tool {
     testing: Option<Testing>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl Tool {
+    fn convert_github_url(&self) -> Result<Self> {
+        let converted_url = github::convert_github_raw_contents_url(&self.url)?;
+        let converted_attachments = match &self.attachments {
+            Some(attachments) => Some(
+                attachments
+                    .iter()
+                    .map(|attachment| attachment.convert_github_url())
+                    .collect::<Vec<Attachment>>(),
+            ),
+            None => None,
+        };
+        let converted_testing = match &self.testing {
+            Some(testing) => Some(Testing {
+                attachments: testing
+                    .attachments
+                    .iter()
+                    .map(|attachment| attachment.convert_github_url())
+                    .collect::<Vec<Attachment>>(),
+            }),
+            None => None,
+        };
+        Ok(Tool {
+            url: converted_url,
+            attachments: converted_attachments,
+            testing: converted_testing,
+            ..self.clone()
+        })
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Attachment {
     target: Option<String>,
     url: Url,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl Attachment {
+    fn convert_github_url(&self) -> Self {
+        let result = github::convert_github_raw_contents_url(&self.url);
+        match result {
+            Ok(url) => Attachment {
+                url: url,
+                ..self.clone()
+            },
+            Err(_) => Attachment { ..self.clone() },
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Testing {
     attachments: Vec<Attachment>,
 }
 
-pub fn load_config(config_file: &str) -> Result<Config> {
+/// Load the contents of the file.
+/// The config_file can be a local file or a remote file.
+pub fn load_config(config_file: &str) -> Result<String> {
     let config_content = match Url::parse(config_file) {
         Ok(url) => {
+            // Remote file
             let response = reqwest::blocking::get(url.as_str())
                 .with_context(|| format!("Failed to get from remote URL: {:?}", url.as_str()))?;
             ensure!(
@@ -103,26 +151,38 @@ pub fn load_config(config_file: &str) -> Result<Config> {
             response.text().context("Failed to decode response body.")?
         }
         Err(_) => {
+            // Local file
             let config_file_path = Path::new(config_file)
                 .canonicalize()
                 .context("Failed to resolve config file path.")?;
-            let mut reader =
-                BufReader::new(File::open(config_file_path.as_path()).with_context(|| {
-                    format!("Failed to open file: {:?}", config_file_path.as_path())
-                })?);
+            let mut reader = BufReader::new(
+                File::open(&config_file_path)
+                    .with_context(|| format!("Failed to open file: {:?}", &config_file_path))?,
+            );
             let mut content = String::new();
-            reader.read_to_string(&mut content).with_context(|| {
-                format!("Failed to read file: {:?}", config_file_path.as_path())
-            })?;
+            reader
+                .read_to_string(&mut content)
+                .with_context(|| format!("Failed to read file: {:?}", config_file_path))?;
             content
         }
     };
-    let config: Config =
-        serde_yaml::from_str(&config_content).context("Failed to deserialize config content.")?;
-    Ok(config)
+    Ok(config_content)
 }
 
-// fn validate_with_json_schema() -> Result<()> {}
+pub fn validate_and_convert_config(config_content: &str) -> Result<Config> {
+    // Validate config_content here by str -> struct
+    let config: Config =
+        serde_yaml::from_str(config_content).context("Failed to convert to config instance.")?;
+    // Convert url to github raw-contents url
+    let converted_config = Config {
+        tools: config
+            .tools
+            .iter()
+            .map(|tool| tool.convert_github_url())
+            .collect::<Result<Vec<Tool>>>()?,
+    };
+    Ok(converted_config)
+}
 
 pub fn repo_owner(repo_url: &RepoUrl) -> Result<String> {
     let path_segments = repo_url
@@ -153,10 +213,10 @@ pub fn repo_name(repo_url: &RepoUrl) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
 
     mod resolve_repository_url {
         use super::*;
+        use std::env;
 
         #[test]
         fn ok() {
@@ -179,6 +239,38 @@ mod tests {
         }
     }
 
+    mod load_config {
+        use super::*;
+        use std::env;
+        use std::path::Path;
+
+        #[test]
+        fn ok_local_file() {
+            let mut cwd = env::current_dir().unwrap();
+            cwd.push("tests/gh-trs.test.yml");
+            let local_file_path = cwd.canonicalize().unwrap();
+            let local_file = Path::new(&local_file_path);
+            assert!(load_config(local_file.to_str().ok_or("").unwrap()).is_ok());
+        }
+
+        #[test]
+        fn ok_remote_file() {
+            assert!(load_config(
+                "https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/gh-trs.test.yml"
+            )
+            .is_ok());
+        }
+
+        #[test]
+        fn err() {
+            assert!(load_config("/tmp/foobar.yml").is_err());
+            assert!(load_config(
+                "https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/foobar.yml"
+            )
+            .is_err());
+        }
+    }
+
     mod repo_owner {
         use super::*;
 
@@ -198,6 +290,88 @@ mod tests {
             let repo_url =
                 RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
             assert_eq!(repo_name(&repo_url).unwrap(), "gh-trs");
+        }
+    }
+
+    mod convert_github_url {
+        use super::*;
+        use url::Url;
+
+        #[test]
+        fn ok_attachment() {
+            let attachment = Attachment {
+                target: Some("foobar".to_string()),
+                url: Url::parse("https://github.com/suecharo/gh-trs/blob/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap()
+            };
+            let converted_attachment = attachment.convert_github_url();
+            assert_eq!(converted_attachment.target, Some("foobar".to_string()));
+            assert_eq!(converted_attachment.url, Url::parse("https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap());
+        }
+
+        #[test]
+        fn ok_attachment_with_other_url() {
+            let attachment = Attachment {
+                target: Some("foobar".to_string()),
+                url: Url::parse("https://example.com").unwrap(),
+            };
+            let converted_attachment = attachment.convert_github_url();
+            assert_eq!(converted_attachment.target, Some("foobar".to_string()));
+            assert_eq!(
+                converted_attachment.url,
+                Url::parse("https://example.com").unwrap()
+            );
+        }
+
+        #[test]
+        fn ok_tool() {
+            let tool = Tool {
+                url: Url::parse("https://github.com/suecharo/gh-trs/blob/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap(),
+                language_type: "foobar".to_string(),
+                attachments: None,
+                testing: None
+            };
+            let result = tool.convert_github_url();
+            assert!(result.is_ok());
+            let converted_tool = result.unwrap();
+            assert_eq!(converted_tool.url, Url::parse("https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap());
+            assert_eq!(converted_tool.language_type, "foobar".to_string());
+        }
+
+        #[test]
+        fn ok_tool_with_attachments() {
+            let attachment = Attachment {
+                target: Some("foobar".to_string()),
+                url: Url::parse("https://github.com/suecharo/gh-trs/blob/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap()
+            };
+
+            let tool = Tool {
+                url: Url::parse("https://github.com/suecharo/gh-trs/blob/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap(),
+                language_type: "foobar".to_string(),
+                attachments: Some(vec![attachment]),
+                testing: None
+            };
+            let result = tool.convert_github_url();
+            assert!(result.is_ok());
+            let converted_tool = result.unwrap();
+            assert_eq!(converted_tool.url, Url::parse("https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap());
+            assert_eq!(converted_tool.language_type, "foobar".to_string());
+            let converted_attachment = &converted_tool.attachments.ok_or("").unwrap()[0];
+            assert_eq!(converted_attachment.target, Some("foobar".to_string()));
+            assert_eq!(
+                converted_attachment.url,
+                Url::parse("https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap());
+        }
+
+        #[test]
+        fn err() {
+            let tool = Tool {
+                url: Url::parse("https://example.com").unwrap(),
+                language_type: "foobar".to_string(),
+                attachments: None,
+                testing: None,
+            };
+            let result = tool.convert_github_url();
+            assert!(result.is_err());
         }
     }
 }

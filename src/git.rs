@@ -23,7 +23,7 @@ pub fn exec(git: &str, cwd: &Path, args: &[&str]) -> Result<Output> {
         .args(args);
     Ok(command
         .output()
-        .with_context(|| format!("Failed to execute command [{}].", command))?)
+        .with_context(|| format!("Failed to execute command [{:?}].", command))?)
 }
 
 /// Confirm the existence of the git command.

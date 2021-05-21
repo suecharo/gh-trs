@@ -19,14 +19,12 @@ use url::Url;
 /// - `https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl`
 ///
 /// If the url is not github.com or raw.githubusercontent.com, return an Error.
-pub fn convert_github_raw_contents_url(file_url: &str) -> Result<Url> {
-    let parsed_url = Url::parse(file_url)
-        .with_context(|| format!("Failed to parse the input file URL: {}", file_url))?;
+pub fn convert_github_raw_contents_url(file_url: &Url) -> Result<Url> {
     ensure!(
-        ["http", "https", "ftp"].contains(&parsed_url.scheme()),
+        ["http", "https", "ftp"].contains(&file_url.scheme()),
         "The scheme of the input file URL is not http, https or ftp."
     );
-    let host = parsed_url
+    let host = file_url
         .host_str()
         .ok_or(anyhow!("Failed to convert host in parsed URL."))?;
     ensure!(
@@ -34,7 +32,7 @@ pub fn convert_github_raw_contents_url(file_url: &str) -> Result<Url> {
         "The input URL host is not github.com or raw.githubusercontent.com"
     );
 
-    let path_segments = parsed_url
+    let path_segments = file_url
         .path_segments()
         .ok_or(anyhow!("Failed to parse path in parsed URL."))?
         .collect::<Vec<&str>>();
@@ -120,15 +118,16 @@ mod tests {
 
     mod convert_github_raw_contents_url {
         use super::*;
+        use url::Url;
 
         #[test]
         fn ok_branch() {
             let result_1 = convert_github_raw_contents_url(
-                "https://github.com/suecharo/gh-trs/blob/main/tests/resources/cwltool/fastqc.cwl",
+                &Url::parse("https://github.com/suecharo/gh-trs/blob/main/tests/resources/cwltool/fastqc.cwl").unwrap(),
             )
             .unwrap();
             let result_2 = convert_github_raw_contents_url(
-                "https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/resources/cwltool/fastqc.cwl",
+                &Url::parse("https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/resources/cwltool/fastqc.cwl").unwrap(),
             )
             .unwrap();
             assert_eq!(result_1, result_2);
@@ -137,29 +136,30 @@ mod tests {
         #[test]
         fn ok_hash() {
             let result_1 = convert_github_raw_contents_url(
-                "https://github.com/suecharo/gh-trs/blob/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl",
+                &Url::parse("https://github.com/suecharo/gh-trs/blob/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap(),
             )
             .unwrap();
             let result_2 = convert_github_raw_contents_url(
-                "https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl",
+                &Url::parse("https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap(),
             )
             .unwrap();
             assert_eq!(result_1, result_2);
         }
 
         #[test]
-        fn err_local_file_path() {
-            assert!(convert_github_raw_contents_url("/foo/bar.txt").is_err());
-        }
-
-        #[test]
         fn err_file_url() {
-            assert!(convert_github_raw_contents_url("file:///foo/bar.txt").is_err());
+            assert!(
+                convert_github_raw_contents_url(&Url::parse("file:///foo/bar.txt").unwrap())
+                    .is_err()
+            );
         }
 
         #[test]
         fn err_not_github_url() {
-            assert!(convert_github_raw_contents_url("https://test.com/foo/bar.txt").is_err());
+            assert!(convert_github_raw_contents_url(
+                &Url::parse("https://test.com/foo/bar.txt").unwrap()
+            )
+            .is_err());
         }
     }
 

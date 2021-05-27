@@ -1,0 +1,342 @@
+openapi: 3.0.0
+info:
+  title: GA4GH TRS API modified for gh-trs
+  description: |
+    This is the GA4GH (Global Alliance for Genomics & Health) TRS (Tool Registry Service) API definition, modified for gh-trs.
+    Please check [GitHub - ga4gh/tool-registry-service-schemas](https://github.com/ga4gh/tool-registry-service-schemas) for the original GA4GH TRS API definition.
+    The reason for the modification is detailed in [GitHub - suecharo/gh-trs](https://github.com/suecharo/gh-trs).
+  contact:
+    name: suecharo
+    email: suehiro619@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://raw.githubusercontent.com/suecharo/gh-trs/main/LICENSE
+  version: 1.0.0
+paths:
+  /service-info:
+    get:
+      summary: |
+        Show information about this service.
+        It is assumed that removing this endpoint from a URL will result in a valid URL to query against.
+      responses:
+        "200":
+          description: |
+            A successful operation to request the service information about this running service.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+  /tools:
+    get:
+      summary: |
+        Return an id list of all available tools.
+      description: |
+        This endpoint returns an id list of all available tools.
+      responses:
+        "200":
+          description: |
+            An array as an id list of all available tools.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example:
+                  - trimming_and_qc
+  "/tools/{id}":
+    get:
+      summary: |
+        Return the latest tool.
+      description: |
+        This endpoint returns the latest tool.
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: |
+            The latest tool.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tool"
+        "404":
+          description: |
+            The tool can not be found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  "/tools/{id}/versions":
+    get:
+      summary: |
+        Return a version list of a specific tool.
+      description: |
+        This endpoint returns a version list of a specific tool.
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: |
+            An array as a version list of a specific tool.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ToolVersion"
+        "404":
+          description: |
+            The tool can not be found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  "/tools/{id}/versions/{version_id}":
+    get:
+      summary: |
+        Return the specific version tool.
+      description: |
+        This endpoint returns the specific version tool.
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/version_id"
+      responses:
+        "200":
+          description: |
+            The specific version tool.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tool"
+        "404":
+          description: |
+            The tool can not be found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      description: |
+        A unique identifier of the tool, scoped to this registry.
+      example: trimming_and_qc
+      schema:
+        type: string
+    version_id:
+      name: version_id
+      in: path
+      required: true
+      description: |
+        An identifier of the tool version, scoped to this registry.
+        The version generated from the repository owner, repository name, and commit hash like `{repo_owner}_{repo_name}_{commit_hash}`.
+      example: suecharo_gh-trs_0fb996810f153be9ad152565227a10e402950953
+      schema:
+        type: string
+  schemas:
+    Service:
+      type: object
+      description: |
+        GA4GH service.
+      required:
+        - id
+        - name
+        - type
+        - organization
+        - version
+      properties:
+        id:
+          type: string
+          description: |
+            Unique ID of this service.
+            Reverse domain name notation is recommended, though not required.
+            The identifier should attempt to be globally unique so it can be used in downstream aggregator services e.g. Service Registry.
+          example: io.github.suecharo
+        name:
+          type: string
+          description: |
+            Name of this service
+            Should be human readable
+            The name of the repository to be deployed.
+          example: suecharo/gh-trs
+        type:
+          type: object
+          description: |
+            Type of a GA4GH service
+          required:
+            - group
+            - artifact
+            - version
+          properties:
+            group:
+              type: string
+              description: |
+                Namespace in reverse domain name format.
+                Use `org.ga4gh` for implementations compliant with official GA4GH specifications.
+                For services with custom APIs not standardized by GA4GH, or implementations diverging from official GA4GH specifications, use a different namespace (e.g. your organization's reverse domain name).
+              example: io.github.suecharo
+            artifact:
+              type: string
+              description: |
+                Name of the API or GA4GH specification implemented.
+                Official GA4GH types should be assigned as part of standards approval process.
+                Custom artifacts are supported.
+              example: TRS
+            version:
+              type: string
+              description: |
+                Version of the API or specification.
+                GA4GH specifications use semantic versioning.
+              example: gh-trs-1.0.0
+        description:
+          type: string
+          description: |
+            Description of the service.
+            Should be human readable and provide information about the service.
+          example: Generated by gh-trs.
+        organization:
+          type: object
+          description: |
+            Organization providing the service.
+          required:
+            - name
+            - url
+          properties:
+            name:
+              type: string
+              description: |
+                Owner of the repository to be deployed.
+              example: suecharo
+            url:
+              type: string
+              format: uri
+              description: |
+                URL of the website of the organization (RFC 3986 format).
+              example: https://github.com/suecharo
+        contactUrl:
+          type: string
+          format: uri
+          description: |
+            URL of the contact for the provider of this service, e.g. a link to a contact form (RFC 3986 format), or an email (RFC 2368 format).
+          example: mailto:suehiro619@gmail.com
+        documentationUrl:
+          type: string
+          format: uri
+          description: |
+            URL of the documentation of this service (RFC 3986 format). This should help someone learn how to use your service, including any specifics required to access data, e.g. authentication.
+          example: https://suecharo.github.io/gh-trs
+        createdAt:
+          type: string
+          format: date-time
+          description: |
+            Timestamp describing when the service was first deployed and available (RFC 3339 format).
+          example: "2019-06-04T12:58:19Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: |
+            Timestamp describing when the service was last updated (RFC 3339 format).
+          example: "2019-06-04T12:58:19Z"
+        environment:
+          type: string
+          description: |
+            Environment the service is running in.
+            Use this to distinguish between production, development and testing/staging deployments.
+            Suggested values are prod, test, dev, staging.
+            However this is advised and not enforced.
+          example: test
+        version:
+          type: string
+          description: |
+            Version of the service being described.
+            Semantic versioning is recommended, but other identifiers, such as dates or commit hashes, are also allowed.
+            The version should be changed whenever the service is updated.
+            The execution date of gh-trs will be entered.
+          example: "202105010000"
+    Tool:
+      type: object
+      description: |
+        A tool is defined as a description file (which may consist of several files), an Object of a set of instructions to run the test.
+      required:
+        - id
+        - url
+        - version
+        - language_type
+      properties:
+        id:
+          type: string
+          description: |
+            A unique identifier of the tool, scoped to this registry.
+          example: trimming_and_qc
+        url:
+          type: string
+          description: |
+            The URL for this tool.
+            The URL of the GitHub raw content with the commit hash.
+          example: https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/trimming_and_qc.cwl
+        version:
+          $ref: "#/components/schemas/ToolVersion"
+        language_type:
+          type: string
+          description: |
+            A type of tool descriptor language, e.g. CWL or WDL.
+          example: CWL
+        attachments:
+          type: array
+          description: |
+            A set of files required to run a tool.
+            Examples include configuration files and databases.
+          items:
+            $ref: "#/components/schemas/AttachmentFile"
+        testing:
+          type: object
+          description: |
+            A set of executable commands and files for running tests.
+          properties:
+            attachments:
+              type: array
+              description: |
+                A set of files required to run a tool.
+                Examples include configuration files and databases.
+              items:
+                $ref: "#/components/schemas/AttachmentFile"
+    ToolVersion:
+      type: string
+      description: |
+        An identifier of the tool version, scoped to this registry.
+        The version generated from the repository owner, repository name, and commit hash like `{repo_owner}_{repo_name}_{commit_hash}`.
+      example: suecharo_gh-trs_0fb996810f153be9ad152565227a10e402950953
+    AttachmentFile:
+      type: object
+      description: |
+        File object.
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          description: |
+            The URL for the file.
+          example: https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl
+        target:
+          type: string
+          description: |
+            A path relative to the url of the tool itself.
+            Used to represent directory structure.
+          example: fastqc.cwl
+    Error:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: integer
+          format: int32
+          default: 404
+        message:
+          type: string
+          default: Not found

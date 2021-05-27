@@ -92,6 +92,8 @@ ARGS:
     <config-file>    Path or URL to the gh-trs config file [default: gh-trs.yml]
 ```
 
+[Swagger viewer link](https://swagger-url.vercel.app/?url=https%3A%2F%2Fraw.githubusercontent.com%2Fsuecharo%2Fgh-trs%2Fdevelop%2Fgh-trs.openapi.yml)
+
 ## Outline drawing
 
 ![gh-trs Outline Drawing](https://i.imgur.com/aP5hnQS.png)

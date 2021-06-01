@@ -83,7 +83,13 @@ pub struct Tool {
 
 impl Tool {
     fn convert_github_url(&self) -> Result<Self> {
-        let converted_url = github::convert_github_raw_contents_url(&self.url)?;
+        let converted_url =
+            github::convert_github_raw_contents_url(&self.url).with_context(|| {
+                format!(
+                    "Failed to convert tool URL: {}, tool url must be a GitHub URL.",
+                    &self.url.as_str()
+                )
+            })?;
         let converted_attachments = match &self.attachments {
             Some(attachments) => Some(
                 attachments

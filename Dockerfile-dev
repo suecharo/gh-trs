@@ -10,6 +10,8 @@ RUN apt update && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
+RUN cargo install cargo-make cargo-tarpaulin
+
 WORKDIR /app
 COPY . .
 

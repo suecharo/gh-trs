@@ -12,15 +12,12 @@ use url::Url;
 
 /// Util function for handling spawned git processes
 pub fn exec(git: &str, cwd: &Path, args: &[&str]) -> Result<Output> {
+    let cwd_str = cwd.to_str().ok_or(anyhow!(
+        "In git exec, the given cwd: {:?} cannot be changed to str.",
+        cwd
+    ))?;
     let mut command = Command::new(git);
-    command
-        .current_dir(cwd.to_str().with_context(|| {
-            format!(
-                "In git exec, the given cwd: {:?} cannot be changed to str.",
-                cwd
-            )
-        })?)
-        .args(args);
+    command.current_dir(cwd_str).args(args);
     Ok(command
         .output()
         .with_context(|| format!("Failed to execute command [{:?}].", command))?)
@@ -93,10 +90,7 @@ impl RepoUrl {
             Url::parse(&repo_url.replace("git@github.com:", "ssh://git@github.com/"))
                 .with_context(|| format!("Failed to parse the URL: {}", repo_url))?
         } else {
-            bail!(format!(
-                "The URL: {} is not a valid git repository URL.",
-                repo_url
-            ))
+            bail!("The URL: {} is not a valid git repository URL.", repo_url)
         };
 
         if parsed_url.scheme() == "https" {
@@ -296,6 +290,7 @@ pub fn tag(git: &str, cwd: &Path, tag: &Option<String>) -> Result<()> {
 }
 
 /// Push a branch.
+#[cfg(not(tarpaulin_include))]
 pub fn push(git: &str, cwd: &Path, branch: &str) -> Result<()> {
     let result = exec(git, cwd, &["push", "-f", "--tags", "origin", branch])?;
     ensure!(
@@ -317,7 +312,7 @@ mod tests {
 
         #[test]
         fn ok() {
-            assert!(exec("git", &env::current_dir().unwrap(), &["--help"]).is_ok());
+            exec("git", &env::current_dir().unwrap(), &["--help"]).unwrap();
         }
 
         #[test]
@@ -332,7 +327,7 @@ mod tests {
 
         #[test]
         fn ok() {
-            assert!(confirm_existence_of_git_command("git", &env::current_dir().unwrap()).is_ok());
+            confirm_existence_of_git_command("git", &env::current_dir().unwrap()).unwrap();
         }
 
         #[test]
@@ -343,14 +338,85 @@ mod tests {
         }
     }
 
+    mod get_user_name {
+        use super::*;
+        use temp_dir::TempDir;
+
+        #[test]
+        fn ok() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            clone("git", &temp_dir.path(), &repo_url, "main").unwrap();
+            let commit_user = CommitUser {
+                name: "suecharo".to_string(),
+                email: "foobar@example.com".to_string(),
+            };
+            set_commit_user("git", &temp_dir.path(), &commit_user).unwrap();
+
+            let user_name = get_user_name("git", &temp_dir.path()).unwrap();
+            assert_eq!(user_name, "suecharo")
+        }
+
+        // #[test]
+        // fn err() {
+        //     let temp_dir = TempDir::new().unwrap();
+        //     let repo_url =
+        //         RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+        //     clone("git", &temp_dir.path(), &repo_url, "main").unwrap();
+        //     exec("git", &temp_dir.path(), &["config", "--unset", "user.name"]).unwrap();
+
+        //     let result = get_user_name("git", &temp_dir.path());
+        //     assert!(result.is_err());
+        // }
+    }
+
+    mod get_user_email {
+        use super::*;
+        use temp_dir::TempDir;
+
+        #[test]
+        fn ok() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            clone("git", &temp_dir.path(), &repo_url, "main").unwrap();
+            let commit_user = CommitUser {
+                name: "suecharo".to_string(),
+                email: "foobar@example.com".to_string(),
+            };
+            set_commit_user("git", &temp_dir.path(), &commit_user).unwrap();
+
+            let user_email = get_user_email("git", &temp_dir.path()).unwrap();
+            assert_eq!(user_email, "foobar@example.com")
+        }
+
+        // #[test]
+        // fn err() {
+        //     let temp_dir = TempDir::new().unwrap();
+        //     let repo_url =
+        //         RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+        //     clone("git", &temp_dir.path(), &repo_url, "main").unwrap();
+        //     exec(
+        //         "git",
+        //         &temp_dir.path(),
+        //         &["config", "--unset", "user.email"],
+        //     )
+        //     .unwrap();
+
+        //     let result = get_user_email("git", &temp_dir.path());
+        //     println!("{:?}", result);
+        //     assert!(result.is_err());
+        // }
+    }
+
     mod repo_url {
         use super::*;
 
         #[test]
         fn ok_https() {
-            let result = RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https);
-            assert!(result.is_ok());
-            let repo_url = result.unwrap();
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
             assert_eq!(
                 repo_url.https,
                 Url::parse("https://github.com/suecharo/gh-trs.git").unwrap()
@@ -364,9 +430,8 @@ mod tests {
 
         #[test]
         fn ok_ssh() {
-            let result = RepoUrl::new("ssh://git@github.com/suecharo/gh-trs.git", &Scheme::Ssh);
-            assert!(result.is_ok());
-            let repo_url = result.unwrap();
+            let repo_url =
+                RepoUrl::new("ssh://git@github.com/suecharo/gh-trs.git", &Scheme::Ssh).unwrap();
             assert_eq!(
                 repo_url.https,
                 Url::parse("https://github.com/suecharo/gh-trs.git").unwrap()
@@ -380,9 +445,8 @@ mod tests {
 
         #[test]
         fn ok_github_ssh() {
-            let result = RepoUrl::new("git@github.com:suecharo/gh-trs.git", &Scheme::Ssh);
-            assert!(result.is_ok());
-            let repo_url = result.unwrap();
+            let repo_url =
+                RepoUrl::new("git@github.com:suecharo/gh-trs.git", &Scheme::Ssh).unwrap();
             assert_eq!(
                 repo_url.https,
                 Url::parse("https://github.com/suecharo/gh-trs.git").unwrap()
@@ -403,8 +467,18 @@ mod tests {
             )
             .is_err());
             assert!(
-                RepoUrl::new("https://foobar.com/suecharo/gh-trs.git", &Scheme::Https).is_err()
+                RepoUrl::new("https://example.com/suecharo/gh-trs.git", &Scheme::Https).is_err()
             );
+            assert!(RepoUrl::new("foobar://example.com", &Scheme::Https).is_err());
+        }
+
+        #[test]
+        fn display() {
+            let https =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            println!("{}", https);
+            let ssh = RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Ssh).unwrap();
+            println!("{}", ssh);
         }
     }
 
@@ -413,14 +487,13 @@ mod tests {
 
         #[test]
         fn ok() {
-            let result = get_repo_url(
+            let repo_url = get_repo_url(
                 "git",
                 &env::current_dir().unwrap(),
                 "origin",
                 &Scheme::Https,
-            );
-            assert!(result.is_ok());
-            let repo_url = result.unwrap();
+            )
+            .unwrap();
             assert_eq!(
                 repo_url.https,
                 Url::parse("https://github.com/suecharo/gh-trs.git").unwrap()
@@ -451,14 +524,14 @@ mod tests {
         fn ok_branch_exists() {
             let repo_url =
                 RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
-            assert!(clone("git", &TempDir::new().unwrap().path(), &repo_url, "main").is_ok());
+            clone("git", &TempDir::new().unwrap().path(), &repo_url, "main").unwrap();
         }
 
         #[test]
         fn ok_branch_not_exist() {
             let repo_url =
                 RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
-            assert!(clone("git", &TempDir::new().unwrap().path(), &repo_url, "foobar").is_ok());
+            clone("git", &TempDir::new().unwrap().path(), &repo_url, "foobar").unwrap();
         }
     }
 
@@ -471,7 +544,7 @@ mod tests {
                 RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
             let dest_dir = TempDir::new().unwrap();
             clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
-            assert!(checkout("git", &dest_dir.path(), "main").is_ok());
+            checkout("git", &dest_dir.path(), "main").unwrap();
         }
 
         #[test]
@@ -480,7 +553,7 @@ mod tests {
                 RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
             let dest_dir = TempDir::new().unwrap();
             clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
-            assert!(checkout("git", &dest_dir.path(), "foobar").is_ok());
+            checkout("git", &dest_dir.path(), "foobar").unwrap();
         }
 
         #[test]
@@ -498,7 +571,7 @@ mod tests {
                 RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
             let dest_dir = TempDir::new().unwrap();
             clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
-            assert!(delete_ref("git", &dest_dir.path(), "main").is_ok());
+            delete_ref("git", &dest_dir.path(), "main").unwrap();
         }
 
         #[test]
@@ -516,7 +589,7 @@ mod tests {
                 RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
             let dest_dir = TempDir::new().unwrap();
             clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
-            assert!(clean("git", &dest_dir.path()).is_ok());
+            clean("git", &dest_dir.path()).unwrap();
         }
 
         #[test]
@@ -534,7 +607,7 @@ mod tests {
                 RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
             let dest_dir = TempDir::new().unwrap();
             clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
-            assert!(add("git", &dest_dir.path()).is_ok());
+            add("git", &dest_dir.path()).unwrap();
         }
 
         #[test]
@@ -554,18 +627,78 @@ mod tests {
             clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
             let commit_user = CommitUser {
                 name: "suecharo".to_string(),
-                email: "suehiro619@gmail.com".to_string(),
+                email: "foobar@example.com".to_string(),
             };
-            assert!(set_commit_user("git", &dest_dir.path(), &commit_user).is_ok());
+            set_commit_user("git", &dest_dir.path(), &commit_user).unwrap();
         }
 
         #[test]
         fn err() {
             let commit_user = CommitUser {
                 name: "suecharo".to_string(),
-                email: "suehiro619@gmail.com".to_string(),
+                email: "foobar@example.com".to_string(),
             };
             assert!(set_commit_user("git", &Path::new("/tmp"), &commit_user).is_err());
+        }
+    }
+
+    mod commit {
+        use super::*;
+        use std::fs;
+        use std::io::{BufWriter, Write};
+
+        #[test]
+        fn ok() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            let test_file_path = dest_dir.path().join("test.txt");
+            let mut f = BufWriter::new(fs::File::create(test_file_path.as_path()).unwrap());
+            f.write_all("foobar".as_bytes()).unwrap();
+            let commit_user = CommitUser {
+                name: "suecharo".to_string(),
+                email: "foobar@example.com".to_string(),
+            };
+            add("git", &dest_dir.path()).unwrap();
+            set_commit_user("git", &dest_dir.path(), &commit_user).unwrap();
+            commit("git", &dest_dir.path(), "foobar").unwrap();
+        }
+
+        #[test]
+        fn ok_no_change() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            let commit_user = CommitUser {
+                name: "suecharo".to_string(),
+                email: "foobar@example.com".to_string(),
+            };
+            set_commit_user("git", &dest_dir.path(), &commit_user).unwrap();
+            commit("git", &dest_dir.path(), "foobar").unwrap();
+        }
+    }
+
+    mod tag {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            tag("git", &dest_dir.path(), &Some("foobar".to_string())).unwrap();
+        }
+
+        #[test]
+        fn ok_with_none() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            tag("git", &dest_dir.path(), &None).unwrap();
         }
     }
 }

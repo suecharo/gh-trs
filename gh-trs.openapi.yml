@@ -7,7 +7,7 @@ info:
     The reason for the modification is detailed in [GitHub - suecharo/gh-trs](https://github.com/suecharo/gh-trs).
   contact:
     name: suecharo
-    email: suehiro619@gmail.com
+    email: foobar@example.com
   license:
     name: Apache 2.0
     url: https://raw.githubusercontent.com/suecharo/gh-trs/main/LICENSE
@@ -222,7 +222,7 @@ components:
           format: uri
           description: |
             URL of the contact for the provider of this service, e.g. a link to a contact form (RFC 3986 format), or an email (RFC 2368 format).
-          example: mailto:suehiro619@gmail.com
+          example: mailto:foobar@example.com
         documentationUrl:
           type: string
           format: uri

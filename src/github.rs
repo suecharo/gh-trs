@@ -95,13 +95,13 @@ fn get_latest_commit_hash(repo_owner: &str, repo_name: &str, branch: &str) -> Re
     );
     let client = reqwest::blocking::Client::new();
     let response = client
-        .get(url.as_str())
+        .get(&url)
         .header(reqwest::header::USER_AGENT, "gh-trs")
         .send()
-        .with_context(|| format!("Failed to get request to: {:?}", url.as_str()))?;
+        .with_context(|| format!("Failed to get request to: {:?}", &url))?;
     ensure!(
         response.status().is_success(),
-        format!("Failed to get request to: {:?}", url)
+        format!("Failed to get request to: {:?}", &url)
     );
     let body = response
         .json::<ResponseGitHubBranchApi>()
@@ -168,7 +168,7 @@ mod tests {
 
         #[test]
         fn ok() {
-            assert!(is_commit_hash("0fb996810f153be9ad152565227a10e402950953").is_ok());
+            is_commit_hash("0fb996810f153be9ad152565227a10e402950953").unwrap();
         }
 
         #[test]
@@ -185,7 +185,7 @@ mod tests {
 
         #[test]
         fn ok() {
-            assert!(get_latest_commit_hash("suecharo", "gh-trs", "main").is_ok());
+            get_latest_commit_hash("suecharo", "gh-trs", "main").unwrap();
         }
 
         #[test]

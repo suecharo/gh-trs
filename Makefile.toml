@@ -22,4 +22,4 @@ dependencies = ["clean"]
 
 [tasks.coverage-tarpaulin.linux]
 command = "cargo"
-args = ["tarpaulin", "--out", "Html"]
+args = ["tarpaulin", "--ignore-tests", "--out", "Html"]

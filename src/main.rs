@@ -77,6 +77,7 @@ pub struct Opt {
     scheme: Scheme,
 }
 
+#[cfg(not(tarpaulin))]
 fn run() -> Result<()> {
     let opt = Opt::from_args();
     let cwd = env::current_dir().context("Failed to get cwd in your environment")?;
@@ -87,7 +88,7 @@ fn run() -> Result<()> {
             .context("Failed to resolve the repository URL")?;
     let commit_user = utils::resolve_commit_user(&opt.git, &cwd, &opt.user_name, &opt.user_email)
         .context("Failed to resolve the commit user")?;
-    let config = utils::validate_and_convert_config(
+    let _config = utils::validate_and_convert_config(
         &utils::load_config(&opt.config_file)
             .context("Failed to load the gh-trs configuration file")?,
     )
@@ -137,6 +138,7 @@ fn run() -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(tarpaulin))]
 fn main() {
     setup_panic!();
     let result = run();

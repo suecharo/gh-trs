@@ -83,13 +83,7 @@ pub struct Tool {
 
 impl Tool {
     fn convert_github_url(&self) -> Result<Self> {
-        let converted_url =
-            github::convert_github_raw_contents_url(&self.url).with_context(|| {
-                format!(
-                    "Failed to convert tool URL: {}, tool url must be a GitHub URL.",
-                    &self.url.as_str()
-                )
-            })?;
+        let converted_url = github::convert_github_raw_contents_url(&self.url)?;
         let converted_attachments = match &self.attachments {
             Some(attachments) => Some(
                 attachments
@@ -226,22 +220,59 @@ mod tests {
 
         #[test]
         fn ok() {
-            assert!(resolve_repository_url(
+            resolve_repository_url(
                 "git",
                 &env::current_dir().unwrap(),
                 "origin",
                 &Some("https://github.com/suecharo/gh-trs.git".to_string()),
                 &Scheme::Https,
             )
-            .is_ok());
-            assert!(resolve_repository_url(
+            .unwrap();
+            resolve_repository_url(
                 "git",
                 &env::current_dir().unwrap(),
                 "origin",
                 &None,
                 &Scheme::Https,
             )
-            .is_ok());
+            .unwrap();
+        }
+    }
+
+    mod resolve_commit_user {
+        use super::*;
+        use crate::git::{clone, set_commit_user};
+        use std::env;
+        use temp_dir::TempDir;
+
+        #[test]
+        fn ok_with_opt() {
+            let commit_user = resolve_commit_user(
+                "git",
+                &env::current_dir().unwrap(),
+                &Some("suecharo".to_string()),
+                &Some("foobar@example.com".to_string()),
+            )
+            .unwrap();
+            assert_eq!(commit_user.name, "suecharo");
+            assert_eq!(commit_user.email, "foobar@example.com");
+        }
+
+        #[test]
+        fn ok_with_config() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            let dest_dir = TempDir::new().unwrap();
+            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            let commit_user = CommitUser {
+                name: "suecharo".to_string(),
+                email: "foobar@example.com".to_string(),
+            };
+            set_commit_user("git", &dest_dir.path(), &commit_user).unwrap();
+
+            let result = resolve_commit_user("git", &dest_dir.path(), &None, &None).unwrap();
+            assert_eq!(result.name, commit_user.name);
+            assert_eq!(result.email, commit_user.email);
         }
     }
 
@@ -256,15 +287,15 @@ mod tests {
             cwd.push("tests/gh-trs.test.yml");
             let local_file_path = cwd.canonicalize().unwrap();
             let local_file = Path::new(&local_file_path);
-            assert!(load_config(local_file.to_str().ok_or("").unwrap()).is_ok());
+            load_config(local_file.to_str().ok_or("").unwrap()).unwrap();
         }
 
         #[test]
         fn ok_remote_file() {
-            assert!(load_config(
-                "https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/gh-trs.test.yml"
+            load_config(
+                "https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/gh-trs.test.yml",
             )
-            .is_ok());
+            .unwrap();
         }
 
         #[test]
@@ -274,6 +305,19 @@ mod tests {
                 "https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/foobar.yml"
             )
             .is_err());
+        }
+    }
+
+    mod validate_and_convert_config {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            let config_content = load_config(
+                "https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/gh-trs.test.yml",
+            )
+            .unwrap();
+            validate_and_convert_config(&config_content).unwrap();
         }
     }
 
@@ -336,9 +380,7 @@ mod tests {
                 attachments: None,
                 testing: None
             };
-            let result = tool.convert_github_url();
-            assert!(result.is_ok());
-            let converted_tool = result.unwrap();
+            let converted_tool = tool.convert_github_url().unwrap();
             assert_eq!(converted_tool.url, Url::parse("https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap());
             assert_eq!(converted_tool.language_type, "foobar".to_string());
         }
@@ -356,9 +398,7 @@ mod tests {
                 attachments: Some(vec![attachment]),
                 testing: None
             };
-            let result = tool.convert_github_url();
-            assert!(result.is_ok());
-            let converted_tool = result.unwrap();
+            let converted_tool = tool.convert_github_url().unwrap();
             assert_eq!(converted_tool.url, Url::parse("https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap());
             assert_eq!(converted_tool.language_type, "foobar".to_string());
             let converted_attachment = &converted_tool.attachments.ok_or("").unwrap()[0];

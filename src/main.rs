@@ -83,40 +83,51 @@ fn run() -> Result<()> {
     let cwd = env::current_dir().context("Failed to get cwd in your environment")?;
     git::confirm_existence_of_git_command(&opt.git, &cwd)
         .context("Failed to confirm the existence of the git command")?;
-    let repo_url =
-        utils::resolve_repository_url(&opt.git, &cwd, &opt.remote, &opt.repo_url, &opt.scheme)
-            .context("Failed to resolve the repository URL")?;
-    let commit_user = utils::resolve_commit_user(&opt.git, &cwd, &opt.user_name, &opt.user_email)
-        .context("Failed to resolve the commit user")?;
+    let repo_url = utils::resolve_repository_url(
+        &opt.git,
+        &cwd,
+        &opt.remote,
+        opt.repo_url.as_ref(),
+        &opt.scheme,
+    )
+    .context("Failed to resolve the repository URL")?;
+    let commit_user = utils::resolve_commit_user(
+        &opt.git,
+        &cwd,
+        opt.user_name.as_ref(),
+        opt.user_email.as_ref(),
+    )
+    .context("Failed to resolve the commit user")?;
     let _config = utils::validate_and_convert_config(
         &utils::load_config(&opt.config_file)
             .context("Failed to load the gh-trs configuration file")?,
     )
     .context("Failed to validate and convert the gh-trs configuration file")?;
-    let dest_dir = TempDir::new().context("Failed to create temporary directory")?;
+    let dest_dir =
+        TempDir::with_prefix("gh-trs").context("Failed to create temporary directory")?;
 
-    println!("Cloning {} into {:?}", repo_url, dest_dir);
-    git::clone(&opt.git, &dest_dir.path(), &repo_url, &opt.branch)
+    println!("Cloning {} into {:?}", repo_url, dest_dir.path());
+    git::clone(&opt.git, dest_dir.path(), &repo_url, &opt.branch)
         .context("Failed to clone the git repository")?;
-    println!("Checking out {}/{}", opt.remote, opt.branch);
-    git::checkout(&opt.git, &dest_dir.path(), &opt.branch)
+    println!("Checking out {}/{}", &opt.remote, &opt.branch);
+    git::checkout(&opt.git, dest_dir.path(), &opt.branch)
         .context("Failed to checkout the git repository")?;
     // TODO option history is true, not to do delete_ref
-    git::delete_ref(&opt.git, &dest_dir.path(), &opt.branch)
+    git::delete_ref(&opt.git, dest_dir.path(), &opt.branch)
         .context("Failed to delete reference in the git repository")?;
-    git::clean(&opt.git, &dest_dir.path()).context("Failed to clean up the git repository")?;
+    git::clean(&opt.git, dest_dir.path()).context("Failed to clean up the git repository")?;
     println!("Generating the TRS responses");
-    trs::generate_trs_responses(&opt, &repo_url, &commit_user, &dest_dir.path())
+    trs::generate_trs_responses(&opt, &repo_url, &commit_user, dest_dir.path())
         .context("Failed to generate the TRS responses")?;
     println!("Adding all");
-    git::add(&opt.git, &dest_dir.path()).context("Failed to add")?;
-    git::set_commit_user(&opt.git, &dest_dir.path(), &commit_user)
+    git::add(&opt.git, dest_dir.path()).context("Failed to add")?;
+    git::set_commit_user(&opt.git, dest_dir.path(), &commit_user)
         .context("Failed to set the commit user")?;
     println!("Committing as {} <{}>", commit_user.name, commit_user.email);
-    git::commit(&opt.git, &dest_dir.path(), &opt.message).context("Failed to commit")?;
+    git::commit(&opt.git, dest_dir.path(), &opt.message).context("Failed to commit")?;
     if opt.tag.is_some() {
         println!("Tagging");
-        match git::tag(&opt.git, &dest_dir.path(), &opt.tag) {
+        match git::tag(&opt.git, dest_dir.path(), opt.tag.as_ref()) {
             Err(e) => {
                 println!("{:?}", e);
                 println!("Tagging failed, continuing");
@@ -125,7 +136,7 @@ fn run() -> Result<()> {
         }
     }
     println!("Pushing");
-    git::push(&opt.git, &dest_dir.path(), &opt.branch)
+    git::push(&opt.git, dest_dir.path(), &opt.branch)
         .context("Failed to push the git repository")?;
     println!(
         "Your TRS has been deployed to {}",
@@ -163,7 +174,7 @@ mod tests {
 
         #[test]
         fn ok() {
-            let opt = Opt::from_iter(vec![""].iter());
+            let opt = Opt::from_iter(&[] as &[&str]);
             assert_eq!(opt.config_file, "gh-trs.yml");
             assert!(opt.repo_url.ok_or("").is_err());
             assert_eq!(opt.branch, "gh-pages");

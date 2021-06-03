@@ -2,6 +2,7 @@ use crate::git;
 use crate::github;
 use crate::Scheme;
 
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -21,18 +22,17 @@ use url::Url;
 /// 2. URL of the git repository in cwd
 ///
 /// Output error if host is not github.com
-pub fn resolve_repository_url(
-    git: &str,
-    cwd: &Path,
-    remote: &str,
-    opt_repo_url: &Option<String>,
+pub fn resolve_repository_url<S: AsRef<str>>(
+    git: impl AsRef<OsStr>,
+    cwd: impl AsRef<Path>,
+    remote: impl AsRef<str>,
+    opt_repo_url: Option<S>,
     opt_scheme: &Scheme,
 ) -> Result<RepoUrl> {
-    let repo_url = match opt_repo_url {
-        Some(string_url) => RepoUrl::new(&string_url, opt_scheme)?,
-        None => git::get_repo_url(git, cwd, remote, opt_scheme)?,
-    };
-    Ok(repo_url)
+    Ok(match opt_repo_url {
+        Some(opt_repo_url) => RepoUrl::new(opt_repo_url, opt_scheme)?,
+        None => git::get_repo_url(&git, &cwd, remote, opt_scheme)?,
+    })
 }
 
 #[derive(Debug)]
@@ -45,20 +45,20 @@ pub struct CommitUser {
 ///
 /// 1. Command line options
 /// 2. name and email of the git repository in cwd
-pub fn resolve_commit_user(
-    git: &str,
-    cwd: &Path,
-    opt_name: &Option<String>,
-    opt_email: &Option<String>,
+pub fn resolve_commit_user<S: AsRef<str>>(
+    git: impl AsRef<OsStr>,
+    cwd: impl AsRef<Path>,
+    opt_name: Option<S>,
+    opt_email: Option<S>,
 ) -> Result<CommitUser> {
     let commit_user = CommitUser {
         name: match opt_name {
-            Some(name) => name.to_string(),
-            None => git::get_user_name(git, cwd)?,
+            Some(opt_name) => opt_name.as_ref().to_string(),
+            None => git::get_user_name(&git, &cwd)?,
         },
         email: match opt_email {
-            Some(email) => email.to_string(),
-            None => git::get_user_email(git, cwd)?,
+            Some(opt_email) => opt_email.as_ref().to_string(),
+            None => git::get_user_email(&git, &cwd)?,
         },
     };
     ensure!(
@@ -83,7 +83,13 @@ pub struct Tool {
 
 impl Tool {
     fn convert_github_url(&self) -> Result<Self> {
-        let converted_url = github::convert_github_raw_contents_url(&self.url)?;
+        let converted_url =
+            github::convert_github_raw_contents_url(&self.url).with_context(|| {
+                format!(
+                    "Failed to convert the GitHub raw contents URL: {}",
+                    &self.url.as_str()
+                )
+            })?;
         let converted_attachments = match &self.attachments {
             Some(attachments) => Some(
                 attachments
@@ -103,7 +109,7 @@ impl Tool {
             }),
             None => None,
         };
-        Ok(Tool {
+        Ok(Self {
             url: converted_url,
             attachments: converted_attachments,
             testing: converted_testing,
@@ -122,11 +128,11 @@ impl Attachment {
     fn convert_github_url(&self) -> Self {
         let result = github::convert_github_raw_contents_url(&self.url);
         match result {
-            Ok(url) => Attachment {
+            Ok(url) => Self {
                 url: url,
                 ..self.clone()
             },
-            Err(_) => Attachment { ..self.clone() },
+            Err(_) => Self { ..self.clone() },
         }
     }
 }
@@ -138,12 +144,13 @@ pub struct Testing {
 
 /// Load the contents of the file.
 /// The config_file can be a local file or a remote file.
-pub fn load_config(config_file: &str) -> Result<String> {
-    let config_content = match Url::parse(config_file) {
+pub fn load_config(config_file: impl AsRef<str>) -> Result<String> {
+    Ok(match Url::parse(config_file.as_ref()) {
         Ok(url) => {
             // Remote file
-            let response = reqwest::blocking::get(url.as_str())
-                .with_context(|| format!("Failed to get from remote URL: {:?}", url.as_str()))?;
+            let response = reqwest::blocking::get(url.as_str()).with_context(|| {
+                format!("Failed to get from the remote URL: {:?}", url.as_str())
+            })?;
             ensure!(
                 response.status().is_success(),
                 format!("Failed to get from remote URL: {:?}", url)
@@ -152,7 +159,7 @@ pub fn load_config(config_file: &str) -> Result<String> {
         }
         Err(_) => {
             // Local file
-            let config_file_path = Path::new(config_file)
+            let config_file_path = Path::new(config_file.as_ref())
                 .canonicalize()
                 .context("Failed to resolve config file path.")?;
             let mut reader = BufReader::new(
@@ -165,23 +172,21 @@ pub fn load_config(config_file: &str) -> Result<String> {
                 .with_context(|| format!("Failed to read file: {:?}", config_file_path))?;
             content
         }
-    };
-    Ok(config_content)
+    })
 }
 
-pub fn validate_and_convert_config(config_content: &str) -> Result<Config> {
+pub fn validate_and_convert_config(config_content: impl AsRef<str>) -> Result<Config> {
     // Validate config_content here by str -> struct
-    let config: Config =
-        serde_yaml::from_str(config_content).context("Failed to convert to config instance.")?;
+    let config: Config = serde_yaml::from_str(config_content.as_ref())
+        .context("Failed to convert to config instance.")?;
     // Convert url to github raw-contents url
-    let converted_config = Config {
+    Ok(Config {
         tools: config
             .tools
             .iter()
             .map(|tool| tool.convert_github_url())
             .collect::<Result<Vec<Tool>>>()?,
-    };
-    Ok(converted_config)
+    })
 }
 
 pub fn repo_owner(repo_url: &RepoUrl) -> Result<String> {
@@ -213,26 +218,39 @@ pub fn repo_name(repo_url: &RepoUrl) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::git::{clone, set_commit_user};
+    use std::env;
+    use std::path::Path;
+    use temp_dir::TempDir;
+    use url::Url;
 
     mod resolve_repository_url {
         use super::*;
-        use std::env;
 
         #[test]
-        fn ok() {
+        fn ok_with_opt() {
+            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
             resolve_repository_url(
                 "git",
-                &env::current_dir().unwrap(),
+                temp_dir.path(),
                 "origin",
-                &Some("https://github.com/suecharo/gh-trs.git".to_string()),
+                Some("https://github.com/suecharo/gh-trs.git"),
                 &Scheme::Https,
             )
             .unwrap();
+        }
+
+        #[test]
+        fn ok_with_git_dir() {
+            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            clone("git", temp_dir.path(), &repo_url, "main").unwrap();
             resolve_repository_url(
                 "git",
-                &env::current_dir().unwrap(),
+                temp_dir.path(),
                 "origin",
-                &None,
+                None as Option<&str>,
                 &Scheme::Https,
             )
             .unwrap();
@@ -241,17 +259,15 @@ mod tests {
 
     mod resolve_commit_user {
         use super::*;
-        use crate::git::{clone, set_commit_user};
-        use std::env;
-        use temp_dir::TempDir;
 
         #[test]
         fn ok_with_opt() {
+            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
             let commit_user = resolve_commit_user(
                 "git",
-                &env::current_dir().unwrap(),
-                &Some("suecharo".to_string()),
-                &Some("foobar@example.com".to_string()),
+                temp_dir.path(),
+                Some("suecharo"),
+                Some("foobar@example.com"),
             )
             .unwrap();
             assert_eq!(commit_user.name, "suecharo");
@@ -260,17 +276,23 @@ mod tests {
 
         #[test]
         fn ok_with_config() {
+            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
             let repo_url =
                 RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
-            let dest_dir = TempDir::new().unwrap();
-            clone("git", &dest_dir.path(), &repo_url, "main").unwrap();
+            clone("git", temp_dir.path(), &repo_url, "main").unwrap();
             let commit_user = CommitUser {
                 name: "suecharo".to_string(),
                 email: "foobar@example.com".to_string(),
             };
-            set_commit_user("git", &dest_dir.path(), &commit_user).unwrap();
+            set_commit_user("git", temp_dir.path(), &commit_user).unwrap();
 
-            let result = resolve_commit_user("git", &dest_dir.path(), &None, &None).unwrap();
+            let result = resolve_commit_user(
+                "git",
+                temp_dir.path(),
+                None as Option<&str>,
+                None as Option<&str>,
+            )
+            .unwrap();
             assert_eq!(result.name, commit_user.name);
             assert_eq!(result.email, commit_user.email);
         }
@@ -278,8 +300,6 @@ mod tests {
 
     mod load_config {
         use super::*;
-        use std::env;
-        use std::path::Path;
 
         #[test]
         fn ok_local_file() {
@@ -345,7 +365,6 @@ mod tests {
 
     mod convert_github_url {
         use super::*;
-        use url::Url;
 
         #[test]
         fn ok_attachment() {

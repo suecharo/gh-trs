@@ -44,11 +44,21 @@ struct ServiceOrganization {
 }
 
 impl ServiceInfo {
-    fn new(opt: &Opt, repo_url: &RepoUrl, commit_user: &CommitUser) -> Result<ServiceInfo> {
+    fn new(opt: &Opt, repo_url: &RepoUrl, commit_user: &CommitUser) -> Result<Self> {
         let now = Utc::now();
-        let repo_owner = utils::repo_owner(repo_url)?;
-        let repo_name = utils::repo_name(repo_url)?;
-        let service_info = ServiceInfo {
+        let repo_owner = utils::repo_owner(&repo_url).with_context(|| {
+            format!(
+                "Failed to parse the repository owner from the repository URL: {}",
+                &repo_url
+            )
+        })?;
+        let repo_name = utils::repo_name(&repo_url).with_context(|| {
+            format!(
+                "Failed to parse the repository name from the repository URL: {}",
+                &repo_url
+            )
+        })?;
+        Ok(Self {
             id: format!("io.github.{}", &repo_owner),
             name: format!("{}/{}", &repo_owner, &repo_name),
             r#type: ServiceType {
@@ -62,7 +72,7 @@ impl ServiceInfo {
                 url: Url::parse(&format!("https://github.com/{}", &repo_owner))
                     .context("Failed to parse the organization URL in service-info response.")?,
             },
-            contact_url: Url::parse(&format!("mailto:{}", commit_user.email))
+            contact_url: Url::parse(&format!("mailto:{}", &commit_user.email))
                 .context("Failed to parse the contact URL in service-info response.")?,
             documentation_url: Url::parse(&format!(
                 "https://{}.github.io/{}",
@@ -71,10 +81,9 @@ impl ServiceInfo {
             .context("Failed to parse the documentation URL in service-info response.")?,
             created_at: format!("{}", now.format("%Y-%m-%dT%H:%M:%SZ")),
             updated_at: format!("{}", now.format("%Y-%m-%dT%H:%M:%SZ")),
-            environment: opt.environment.to_string(),
+            environment: opt.environment.clone(),
             version: format!("{}", Utc::today().format("%Y%m%d")),
-        };
-        Ok(service_info)
+        })
     }
 }
 
@@ -82,20 +91,24 @@ pub fn generate_trs_responses(
     opt: &Opt,
     repo_url: &RepoUrl,
     commit_user: &CommitUser,
-    dest_dir: &Path,
+    dest_dir: impl AsRef<Path>,
 ) -> Result<()> {
-    dump_service_info(opt, repo_url, dest_dir, commit_user)?;
+    dump_service_info(&opt, &repo_url, &commit_user, &dest_dir)
+        .context("Failed to dump the service info.")?;
+    // dump_tools(opt, repo_url, dest_dir);
     Ok(())
 }
 
 fn dump_service_info(
     opt: &Opt,
     repo_url: &RepoUrl,
-    dest_dir: &Path,
     commit_user: &CommitUser,
+    dest_dir: impl AsRef<Path>,
 ) -> Result<()> {
-    let service_info = ServiceInfo::new(&opt, &repo_url, &commit_user)?;
-    let service_info_path = Path::new(&dest_dir)
+    let service_info = ServiceInfo::new(&opt, &repo_url, &commit_user)
+        .context("Failed to generate the service info.")?;
+    let service_info_path = dest_dir
+        .as_ref()
         .join(&opt.dest)
         .join("service-info/index.json")
         .clean();
@@ -108,7 +121,7 @@ fn dump_service_info(
 }
 
 // Create dir -> Write file
-fn dump_file<T: AsRef<Path>>(file_path: &T, file_content: &str) -> Result<()> {
+fn dump_file(file_path: impl AsRef<Path>, file_content: impl AsRef<str>) -> Result<()> {
     let dir_path = file_path
         .as_ref()
         .parent()
@@ -117,16 +130,16 @@ fn dump_file<T: AsRef<Path>>(file_path: &T, file_content: &str) -> Result<()> {
         .with_context(|| format!("Failed to create dir: {:?}", &dir_path))?;
     let mut f = BufWriter::new(
         fs::File::create(&file_path.as_ref())
-            .with_context(|| format!("Failed to create file: {:?}", &file_path.as_ref()))?,
+            .with_context(|| format!("Failed to create file: {:?}", file_path.as_ref()))?,
     );
-    f.write_all(file_content.as_bytes())
-        .with_context(|| format!("Failed to write file: {:?}", &file_path.as_ref()))?;
+    f.write_all(file_content.as_ref().as_bytes())
+        .with_context(|| format!("Failed to write file: {:?}", file_path.as_ref()))?;
     Ok(())
 }
 
-pub fn trs_url<P: AsRef<Path>>(repo_url: &RepoUrl, dest: &P) -> Result<String> {
+pub fn trs_url(repo_url: &RepoUrl, dest: impl AsRef<Path>) -> Result<String> {
     let path = Path::new(&format!("/{}", &utils::repo_name(&repo_url)?))
-        .join(dest)
+        .join(&dest)
         .clean();
     Ok(format!(
         "https://{}.github.io{}",
@@ -139,31 +152,31 @@ pub fn trs_url<P: AsRef<Path>>(repo_url: &RepoUrl, dest: &P) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils;
+    use crate::{Opt, Scheme};
+    use structopt::StructOpt;
+    use temp_dir::TempDir;
 
     mod new_service_info {
         use super::*;
-        use crate::utils;
-        use crate::{Opt, Scheme};
-        use std::env;
-        use structopt::StructOpt;
 
         #[test]
         fn ok() {
-            let opt = Opt::from_iter(vec![""].iter());
-            let cwd = env::current_dir().unwrap();
+            let opt = Opt::from_iter(&[] as &[&str]);
+            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
             let repo_url = utils::resolve_repository_url(
                 "git",
-                &env::current_dir().unwrap(),
+                temp_dir.path(),
                 "origin",
-                &Some("https://github.com/suecharo/gh-trs.git".to_string()),
+                Some("https://github.com/suecharo/gh-trs.git"),
                 &Scheme::Https,
             )
             .unwrap();
             let commit_user = utils::resolve_commit_user(
                 &opt.git,
-                &cwd,
-                &Some("suecharo".to_string()),
-                &Some("foobar@example.com".to_string()),
+                temp_dir.path(),
+                Some("suecharo"),
+                Some("foobar@example.com"),
             )
             .unwrap();
             let service_info = ServiceInfo::new(&opt, &repo_url, &commit_user).unwrap();
@@ -192,70 +205,63 @@ mod tests {
 
     mod generate_trs_responses {
         use super::*;
-        use crate::{Opt, Scheme};
-        use structopt::StructOpt;
-        use temp_dir::TempDir;
 
         #[test]
         fn ok() {
-            let opt = Opt::from_iter(vec![""].iter());
-            let dest_dir = TempDir::new().unwrap();
+            let opt = Opt::from_iter(&[] as &[&str]);
+            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
             let repo_url = utils::resolve_repository_url(
                 "git",
-                &dest_dir.path(),
+                temp_dir.path(),
                 "origin",
-                &Some("https://github.com/suecharo/gh-trs.git".to_string()),
+                Some("https://github.com/suecharo/gh-trs.git"),
                 &Scheme::Https,
             )
             .unwrap();
             let commit_user = utils::resolve_commit_user(
                 &opt.git,
-                &dest_dir.path(),
-                &Some("suecharo".to_string()),
-                &Some("foobar@example.com".to_string()),
+                temp_dir.path(),
+                Some("suecharo"),
+                Some("foobar@example.com"),
             )
             .unwrap();
-            generate_trs_responses(&opt, &repo_url, &commit_user, &dest_dir.path()).unwrap();
+            generate_trs_responses(&opt, &repo_url, &commit_user, temp_dir.path()).unwrap();
         }
     }
 
     mod dump_service_info {
         use super::*;
-        use crate::{Opt, Scheme};
-        use structopt::StructOpt;
-        use temp_dir::TempDir;
 
         #[test]
         fn ok() {
-            let opt = Opt::from_iter(vec![""].iter());
-            let dest_dir = TempDir::new().unwrap();
+            let opt = Opt::from_iter(&[] as &[&str]);
+            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
             let repo_url = utils::resolve_repository_url(
                 "git",
-                &dest_dir.path(),
+                temp_dir.path(),
                 "origin",
-                &Some("https://github.com/suecharo/gh-trs.git".to_string()),
+                Some("https://github.com/suecharo/gh-trs.git"),
                 &Scheme::Https,
             )
             .unwrap();
             let commit_user = utils::resolve_commit_user(
                 &opt.git,
-                &dest_dir.path(),
-                &Some("suecharo".to_string()),
-                &Some("foobar@example.com".to_string()),
+                temp_dir.path(),
+                Some("suecharo"),
+                Some("foobar@example.com"),
             )
             .unwrap();
-            dump_service_info(&opt, &repo_url, &dest_dir.path(), &commit_user).unwrap();
+            dump_service_info(&opt, &repo_url, &commit_user, temp_dir.path()).unwrap();
         }
     }
 
     mod dump_file {
         use super::*;
-        use temp_dir::TempDir;
 
         #[test]
         fn ok() {
-            let dest_dir = TempDir::new().unwrap();
-            let test_file_path = dest_dir.path().join("tests/test.txt").clean();
+            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
+            let test_file_path = temp_dir.child("tests/test.txt");
             dump_file(&test_file_path, "foobar").unwrap();
             assert!(test_file_path.exists());
         }
@@ -263,20 +269,19 @@ mod tests {
 
     mod trs_url {
         use super::*;
-        use crate::Scheme;
 
         #[test]
         fn ok() {
+            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
             let repo_url = utils::resolve_repository_url(
                 "git",
-                &Path::new("/tmp/examples"),
+                temp_dir.path(),
                 "origin",
-                &Some("https://github.com/suecharo/gh-trs.git".to_string()),
+                Some("https://github.com/suecharo/gh-trs.git"),
                 &Scheme::Https,
             )
             .unwrap();
-            let dest = Path::new(".");
-            let trs_url = trs_url(&repo_url, &dest).unwrap();
+            let trs_url = trs_url(&repo_url, ".").unwrap();
             assert_eq!(trs_url, "https://suecharo.github.io/gh-trs");
         }
     }

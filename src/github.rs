@@ -22,14 +22,14 @@ use url::Url;
 pub fn convert_github_raw_contents_url(file_url: &Url) -> Result<Url> {
     ensure!(
         ["http", "https", "ftp"].contains(&file_url.scheme()),
-        "The scheme of the input file URL is not http, https or ftp."
+        "The URL scheme of the input file is not http, https or ftp."
     );
     let host = file_url
         .host_str()
-        .ok_or(anyhow!("Failed to convert host in parsed URL."))?;
+        .ok_or(anyhow!("Failed to get host_str."))?;
     ensure!(
         host == "github.com" || host == "raw.githubusercontent.com",
-        "The input URL host is not github.com or raw.githubusercontent.com"
+        "The entered URL host is not github.com or raw.githubusercontent.com"
     );
 
     let path_segments = file_url
@@ -37,7 +37,13 @@ pub fn convert_github_raw_contents_url(file_url: &Url) -> Result<Url> {
         .ok_or(anyhow!("Failed to parse path in parsed URL."))?
         .collect::<Vec<&str>>();
     // <repo_owner>/<repo_name>/[blob, hash_value]/<path_to_file>
-    ensure!(path_segments.len() >= 4, format!("The path length of the input URL: {:?} is too short. Is it really the GitHub file URL?", file_url));
+    ensure!(
+        path_segments.len() >= 4,
+        format!(
+            "The path length of input URL: {} is too short. Is it really the URL of a GitHub file?",
+            file_url.as_str()
+        )
+    );
     let commit_hash = if path_segments[2] == "blob" {
         // Ok: suecharo/gh-trs/blob/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl
         // Err: suecharo/gh-trs/blob/main/tests/resources/cwltool/fastqc.cwl
@@ -68,12 +74,15 @@ pub fn convert_github_raw_contents_url(file_url: &Url) -> Result<Url> {
 }
 
 /// Check if a str is in a 40 character git commit hash.
-fn is_commit_hash(hash: &str) -> Result<()> {
+fn is_commit_hash(hash: impl AsRef<str>) -> Result<()> {
     let re = Regex::new(r"^[0-9a-f]{40}$").context("Failed to compile regular expression.")?;
-    if re.is_match(hash) {
+    if re.is_match(hash.as_ref()) {
         Ok(())
     } else {
-        bail!(format!("The input string: {} is not a commit hash.", hash))
+        bail!(format!(
+            "The input string: {} is not a commit hash.",
+            hash.as_ref()
+        ))
     }
 }
 
@@ -88,27 +97,33 @@ struct ResponseGitHubBranchApiCommit {
 }
 
 /// Send a GET request to api.github.com to get the latest commit hash
-fn get_latest_commit_hash(repo_owner: &str, repo_name: &str, branch: &str) -> Result<String> {
+fn get_latest_commit_hash(
+    repo_owner: impl AsRef<str>,
+    repo_name: impl AsRef<str>,
+    branch: impl AsRef<str>,
+) -> Result<String> {
     let url = format!(
         "https://api.github.com/repos/{}/{}/branches/{}",
-        repo_owner, repo_name, branch
+        repo_owner.as_ref(),
+        repo_name.as_ref(),
+        branch.as_ref()
     );
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(&url)
         .header(reqwest::header::USER_AGENT, "gh-trs")
         .send()
-        .with_context(|| format!("Failed to get request to: {:?}", &url))?;
+        .with_context(|| format!("Failed to get request to: {}", url.as_str()))?;
     ensure!(
         response.status().is_success(),
-        format!("Failed to get request to: {:?}", &url)
+        format!("Failed to get request to: {}", url.as_str())
     );
     let body = response
         .json::<ResponseGitHubBranchApi>()
-        .context("Failed to json parse response body.")?;
+        .context("Failed to parse the json in the response body.")?;
     match is_commit_hash(&body.commit.sha) {
         Ok(_) => Ok(body.commit.sha),
-        Err(_) => bail!("Get latest commit hash seems to have failed."),
+        Err(_) => bail!("Failed to get the latest commit hash."),
     }
 }
 
@@ -118,7 +133,6 @@ mod tests {
 
     mod convert_github_raw_contents_url {
         use super::*;
-        use url::Url;
 
         #[test]
         fn ok_branch() {

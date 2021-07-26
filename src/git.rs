@@ -1,14 +1,12 @@
 use crate::utils::CommitUser;
 use crate::Scheme;
-
+use anyhow::{anyhow, bail, ensure};
+use anyhow::{Context, Result};
+use regex::Regex;
 use std::ffi::OsStr;
 use std::fmt;
 use std::path::Path;
 use std::process::{Command, Output};
-
-use anyhow::{anyhow, bail, ensure};
-use anyhow::{Context, Result};
-use regex::Regex;
 use url::Url;
 
 /// Util function for handling spawned git processes

@@ -1,17 +1,15 @@
 use crate::git::RepoUrl;
 use crate::utils;
-use crate::utils::CommitUser;
+use crate::utils::{CommitUser, Config};
 use crate::Opt;
-
-use std::fs;
-use std::io::{BufWriter, Write};
-use std::path::Path;
-
 use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
 use path_clean::PathClean;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::fs;
+use std::io::{BufWriter, Write};
+use std::path::Path;
 use url::Url;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -92,10 +90,12 @@ pub fn generate_trs_responses(
     repo_url: &RepoUrl,
     commit_user: &CommitUser,
     dest_dir: impl AsRef<Path>,
+    config: &Config,
 ) -> Result<()> {
     dump_service_info(&opt, &repo_url, &commit_user, &dest_dir)
         .context("Failed to dump the service info.")?;
-    // dump_tools(opt, repo_url, dest_dir);
+    dump_tools(&opt, &repo_url, &commit_user, &dest_dir, &config)
+        .context("Failed to dump tools.")?;
     Ok(())
 }
 
@@ -118,6 +118,16 @@ fn dump_service_info(
             .context("Failed to serialize the service-info response.")?,
     )?;
     Ok(())
+}
+
+fn dump_tools(
+    _opt: &Opt,
+    _repo_url: &RepoUrl,
+    _commit_user: &CommitUser,
+    _dest_dir: impl AsRef<Path>,
+    _config: &Config,
+) -> Result<()> {
+    unimplemented!()
 }
 
 // Create dir -> Write file
@@ -225,7 +235,21 @@ mod tests {
                 Some("foobar@example.com"),
             )
             .unwrap();
-            generate_trs_responses(&opt, &repo_url, &commit_user, temp_dir.path()).unwrap();
+            let this_file = Path::new(file!()).canonicalize().unwrap();
+            let test_config_file = this_file
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("tests/gh-trs.test.yml")
+                .canonicalize()
+                .unwrap();
+            let config = utils::validate_and_convert_config(
+                utils::load_config(test_config_file.to_str().unwrap()).unwrap(),
+            )
+            .unwrap();
+            generate_trs_responses(&opt, &repo_url, &commit_user, temp_dir.path(), &config)
+                .unwrap();
         }
     }
 
@@ -252,6 +276,33 @@ mod tests {
             )
             .unwrap();
             dump_service_info(&opt, &repo_url, &commit_user, temp_dir.path()).unwrap();
+        }
+    }
+
+    mod dump_tools {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            let opt = Opt::from_iter(&[] as &[&str]);
+            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
+            let repo_url = utils::resolve_repository_url(
+                "git",
+                temp_dir.path(),
+                "origin",
+                Some("https://github.com/suecharo/gh-trs.git"),
+                &Scheme::Https,
+            )
+            .unwrap();
+            let commit_user = utils::resolve_commit_user(
+                &opt.git,
+                temp_dir.path(),
+                Some("suecharo"),
+                Some("foobar@example.com"),
+            )
+            .unwrap();
+            let config = Config { tools: vec![] };
+            dump_tools(&opt, &repo_url, &commit_user, temp_dir.path(), &config).unwrap();
         }
     }
 

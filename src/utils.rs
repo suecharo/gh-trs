@@ -2,18 +2,19 @@ use crate::git;
 use crate::github;
 use crate::Scheme;
 
-use std::ffi::OsStr;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::path::Path;
-
 use anyhow::{anyhow, ensure};
 use anyhow::{Context, Result};
 use git::RepoUrl;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_yaml;
+use std::collections::HashSet;
+use std::ffi::OsStr;
+use std::fs::File;
+use std::hash::Hash;
+use std::io::prelude::*;
+use std::io::BufReader;
+use std::path::Path;
 use url::Url;
 
 /// Priority:
@@ -70,11 +71,12 @@ pub fn resolve_commit_user<S: AsRef<str>>(
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
-    tools: Vec<Tool>,
+    pub tools: Vec<Tool>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Tool {
+    id: String,
     url: Url,
     language_type: String,
     attachments: Option<Vec<Attachment>>,
@@ -175,10 +177,27 @@ pub fn load_config(config_file: impl AsRef<str>) -> Result<String> {
     })
 }
 
+fn check_duplicate<T>(iter: T) -> bool
+where
+    T: Iterator,
+    T::Item: Eq + Hash,
+{
+    let mut uniq = HashSet::new();
+    iter.into_iter().all(|x| uniq.insert(x))
+}
+
 pub fn validate_and_convert_config(config_content: impl AsRef<str>) -> Result<Config> {
     // Validate config_content here by str -> struct
     let config: Config = serde_yaml::from_str(config_content.as_ref())
         .context("Failed to convert to config instance.")?;
+    // Check that there are no duplicate id's
+    let ids = config
+        .tools
+        .iter()
+        .map(|tool| tool.id.as_str())
+        .collect::<Vec<&str>>();
+    // let a = check_duplicate(ids);
+
     // Convert url to github raw-contents url
     Ok(Config {
         tools: config
@@ -328,15 +347,31 @@ mod tests {
         }
     }
 
+    mod check_duplicate {
+        use super::*;
+
+        #[test]
+        fn ok() {
+            assert!(check_duplicate(vec!(&[] as &[&str])));
+            assert!(check_duplicate(vec!(["foo", "foo"])));
+        }
+    }
+
     mod validate_and_convert_config {
         use super::*;
 
         #[test]
         fn ok() {
-            let config_content = load_config(
-                "https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/gh-trs.test.yml",
-            )
-            .unwrap();
+            let this_file = Path::new(file!()).canonicalize().unwrap();
+            let test_config_file = this_file
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("tests/gh-trs.test.yml")
+                .canonicalize()
+                .unwrap();
+            let config_content = load_config(test_config_file.to_str().unwrap()).unwrap();
             validate_and_convert_config(&config_content).unwrap();
         }
     }
@@ -394,6 +429,7 @@ mod tests {
         #[test]
         fn ok_tool() {
             let tool = Tool {
+                id: "foobar".to_string(),
                 url: Url::parse("https://github.com/suecharo/gh-trs/blob/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap(),
                 language_type: "foobar".to_string(),
                 attachments: None,
@@ -412,6 +448,7 @@ mod tests {
             };
 
             let tool = Tool {
+                id: "foobar".to_string(),
                 url: Url::parse("https://github.com/suecharo/gh-trs/blob/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl").unwrap(),
                 language_type: "foobar".to_string(),
                 attachments: Some(vec![attachment]),
@@ -430,6 +467,7 @@ mod tests {
         #[test]
         fn err() {
             let tool = Tool {
+                id: "foobar".to_string(),
                 url: Url::parse("https://example.com").unwrap(),
                 language_type: "foobar".to_string(),
                 attachments: None,

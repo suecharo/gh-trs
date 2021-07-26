@@ -8,6 +8,9 @@
       "items": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string"
+          },
           "url": {
             "type": "string"
           },
@@ -47,7 +50,7 @@
           },
           "additionalProperties": false
         },
-        "required": ["url", "language_type"],
+        "required": ["id", "url", "language_type"],
         "additionalProperties": false
       },
       "additionalItems": false

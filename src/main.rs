@@ -2,13 +2,11 @@ mod git;
 mod github;
 mod trs;
 mod utils;
-
+use anyhow::{Context, Result};
+use human_panic::setup_panic;
 use std::env;
 use std::path::PathBuf;
 use std::process;
-
-use anyhow::{Context, Result};
-use human_panic::setup_panic;
 use structopt::clap::arg_enum;
 use structopt::{clap, StructOpt};
 use temp_dir::TempDir;
@@ -98,7 +96,7 @@ fn run() -> Result<()> {
         opt.user_email.as_ref(),
     )
     .context("Failed to resolve the commit user")?;
-    let _config = utils::validate_and_convert_config(
+    let config = utils::validate_and_convert_config(
         &utils::load_config(&opt.config_file)
             .context("Failed to load the gh-trs configuration file")?,
     )
@@ -117,7 +115,7 @@ fn run() -> Result<()> {
         .context("Failed to delete reference in the git repository")?;
     git::clean(&opt.git, dest_dir.path()).context("Failed to clean up the git repository")?;
     println!("Generating the TRS responses");
-    trs::generate_trs_responses(&opt, &repo_url, &commit_user, dest_dir.path())
+    trs::generate_trs_responses(&opt, &repo_url, &commit_user, dest_dir.path(), &config)
         .context("Failed to generate the TRS responses")?;
     println!("Adding all");
     git::add(&opt.git, dest_dir.path()).context("Failed to add")?;

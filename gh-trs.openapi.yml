@@ -159,14 +159,14 @@ components:
         name:
           type: string
           description: |
-            Name of this service
-            Should be human readable
+            Name of this service.
+            Should be human readable.
             The name of the repository to be deployed.
           example: suecharo/gh-trs
         type:
           type: object
           description: |
-            Type of a GA4GH service
+            Type of a GA4GH service.
           required:
             - group
             - artifact

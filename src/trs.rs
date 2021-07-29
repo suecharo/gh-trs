@@ -1,6 +1,6 @@
 use crate::git::RepoUrl;
 use crate::utils;
-use crate::utils::{CommitUser, Config};
+use crate::utils::{Attachment, CommitUser, Config, Testing, Tool};
 use crate::Opt;
 use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
@@ -92,7 +92,7 @@ pub fn generate_trs_responses(
     config: &Config,
 ) -> Result<()> {
     dump_service_info(&opt, &repo_url, &commit_user, &wd)?;
-    dump_tools(&opt, &repo_url, &commit_user, &wd, &config)?;
+    dump_tools(&opt, &wd, &config)?;
     Ok(())
 }
 
@@ -118,14 +118,86 @@ fn dump_service_info(
     Ok(())
 }
 
-fn dump_tools(
-    _opt: &Opt,
-    _repo_url: &RepoUrl,
-    _commit_user: &CommitUser,
-    _dest_dir: impl AsRef<Path>,
-    _config: &Config,
-) -> Result<()> {
-    unimplemented!()
+/// Dump the tools.
+///
+/// * `opt`: Argument Parameters defined at `main.rs`.
+/// * `repo_url`: Repository URL.
+/// * `commit_user`: Commit user.
+/// * `wd`: Working directory.
+/// * `config`: gh-trs configuration.
+fn dump_tools(opt: &Opt, wd: impl AsRef<Path>, config: &Config) -> Result<()> {
+    dump_tools_root(&opt, &wd, &config)?;
+    dump_each_tool(&opt, &wd, &config)?;
+    Ok(())
+}
+
+/// Dump the tools root.
+///
+/// * `opt`: Argument Parameters defined at `main.rs`.
+/// * `wd`: Working directory.
+/// * `config`: gh-trs configuration.
+fn dump_tools_root(opt: &Opt, wd: impl AsRef<Path>, config: &Config) -> Result<()> {
+    let tool_ids = config.extract_tool_ids()?;
+    let tools_root_path = wd.as_ref().join(&opt.dest).join("tools/index.json").clean();
+    dump_file(&tools_root_path, &serde_json::to_string(&tool_ids)?)?;
+    Ok(())
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TrsTool {
+    id: String,
+    url: Url,
+    version: String,
+    language_type: String,
+    attachments: Option<Vec<Attachment>>,
+    testing: Option<Testing>,
+}
+
+impl TrsTool {
+    fn new(tool: &Tool) -> Result<Self> {
+        Ok(Self {
+            id: tool.id.clone(),
+            url: tool.url.clone(),
+            version: github_url_to_tool_version(&tool.url)?,
+            language_type: tool.language_type.clone(),
+            attachments: tool.attachments.clone(),
+            testing: tool.testing.clone(),
+        })
+    }
+}
+
+/// Convert tool's GitHub raw-contents URL to TRS tool version.
+/// Expected input: https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl
+/// Output: suecharo_gh-trs_0fb996810f153be9ad152565227a10e402950953
+fn github_url_to_tool_version(github_url: &Url) -> Result<String> {
+    let path_segments = github_url
+        .path_segments()
+        .ok_or(anyhow!("Failed to parse path in parsed URL."))?
+        .collect::<Vec<&str>>();
+    Ok(format!(
+        "{repo_owner}_{repo_name}_{commit_hash}",
+        repo_owner = path_segments[0],
+        repo_name = path_segments[1],
+        commit_hash = path_segments[2]
+    ))
+}
+
+/// Dump each tool.
+///
+/// * `opt`: Argument Parameters defined at `main.rs`.
+/// * `wd`: Working directory.
+/// * `config`: gh-trs configuration.
+fn dump_each_tool(opt: &Opt, wd: impl AsRef<Path>, config: &Config) -> Result<()> {
+    for tool in &config.tools {
+        let trs_tool = TrsTool::new(&tool)?;
+        let tool_path = wd
+            .as_ref()
+            .join(&opt.dest)
+            .join(format!("tools/{}/index.json", &tool.id))
+            .clean();
+        dump_file(&tool_path, &serde_json::to_string(&trs_tool)?)?;
+    }
+    Ok(())
 }
 
 // Create dir -> Write file
@@ -250,15 +322,9 @@ mod tests {
         #[test]
         fn ok() {
             let opt = Opt::from_iter(&["gh-trs", "gh-trs.yml"]);
-            let repo_url =
-                RepoUrl::new("ssh://git@github.com/suecharo/gh-trs.git", &Scheme::Ssh).unwrap();
-            let commit_user = CommitUser {
-                name: "suecharo".to_string(),
-                email: "foobar@example.com".to_string(),
-            };
             let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
-            let config = Config { tools: vec![] };
-            dump_tools(&opt, &repo_url, &commit_user, temp_dir.path(), &config).unwrap();
+            let config = Config::new().unwrap();
+            dump_tools(&opt, temp_dir.path(), &config).unwrap();
         }
     }
 

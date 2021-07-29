@@ -78,9 +78,9 @@ pub fn get_user_email(opt: &Opt) -> Result<String> {
 /// - ssh (github default) URL like: git@github.com:suecharo/gh-trs.git
 #[derive(Debug)]
 pub struct RepoUrl {
-    pub https: Url,
-    pub ssh: Url,
-    pub scheme: Scheme,
+    https: Url,
+    ssh: Url,
+    scheme: Scheme,
 }
 
 impl RepoUrl {
@@ -133,6 +133,14 @@ impl RepoUrl {
         } else {
             unreachable!()
         }
+    }
+
+    pub fn path_segments(&self) -> Result<Vec<&str>> {
+        Ok(self
+            .https
+            .path_segments()
+            .ok_or(anyhow!("Failed to parse path in parsed URL."))?
+            .collect::<Vec<&str>>())
     }
 }
 

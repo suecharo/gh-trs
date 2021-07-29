@@ -88,6 +88,7 @@ fn run() -> Result<()> {
     if !opt.ci {
         println!("Generating TRS responses...");
         let dest_dir = git::prepare_working_repository(&opt, &repo_url, &opt.branch)?;
+        println!("{:?}", dest_dir);
         trs::generate_trs_responses(&opt, &repo_url, &commit_user, &dest_dir, &config)?;
         git::add_commit_and_push(
             &opt,

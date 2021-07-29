@@ -64,13 +64,27 @@ pub struct Config {
     pub tools: Vec<Tool>,
 }
 
+impl Config {
+    pub fn new() -> Result<Self> {
+        Ok(Config { tools: Vec::new() })
+    }
+
+    pub fn extract_tool_ids(&self) -> Result<Vec<&str>> {
+        Ok(self
+            .tools
+            .iter()
+            .map(|tool| tool.id.as_str())
+            .collect::<Vec<&str>>())
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Tool {
-    id: String,
-    url: Url,
-    language_type: String,
-    attachments: Option<Vec<Attachment>>,
-    testing: Option<Testing>,
+    pub id: String,
+    pub url: Url,
+    pub language_type: String,
+    pub attachments: Option<Vec<Attachment>>,
+    pub testing: Option<Testing>,
 }
 
 impl Tool {
@@ -186,11 +200,7 @@ pub fn validate_and_convert_config(config_content: impl AsRef<str>) -> Result<Co
     // Validate config_content here by str -> struct
     let config: Config = serde_yaml::from_str(config_content.as_ref())?;
     // Check that there are no duplicate id's
-    let ids = config
-        .tools
-        .iter()
-        .map(|tool| tool.id.as_str())
-        .collect::<Vec<&str>>();
+    let ids = config.extract_tool_ids()?;
     if !check_duplicate(ids) {
         bail!("There is a duplicate tool id.")
     }
@@ -209,11 +219,7 @@ pub fn validate_and_convert_config(config_content: impl AsRef<str>) -> Result<Co
 ///
 /// * `repo_url` - The repository URL.
 pub fn repo_owner(repo_url: &RepoUrl) -> Result<String> {
-    let path_segments = repo_url
-        .https
-        .path_segments()
-        .ok_or(anyhow!("Failed to parse path in parsed URL."))?
-        .collect::<Vec<&str>>();
+    let path_segments = repo_url.path_segments()?;
     ensure!(
         path_segments.len() >= 2,
         "The path length of the repository URL is too short."
@@ -225,11 +231,7 @@ pub fn repo_owner(repo_url: &RepoUrl) -> Result<String> {
 ///
 /// * `repo_url` - The repository URL.
 pub fn repo_name(repo_url: &RepoUrl) -> Result<String> {
-    let path_segments = repo_url
-        .https
-        .path_segments()
-        .ok_or(anyhow!("Failed to parse path in parsed URL."))?
-        .collect::<Vec<&str>>();
+    let path_segments = repo_url.path_segments()?;
     ensure!(
         path_segments.len() >= 2,
         "The path length of the repository URL is too short."

@@ -2,12 +2,18 @@
 
 [![Apache License](https://img.shields.io/badge/license-Apache%202.0-orange.svg?style=flat&color=important)](http://www.apache.org/licenses/LICENSE-2.0)
 
-Global Alliance for Genomics and Health (GA4GH) Cloud Workstream has created Workflow Execution Service (WES) and Tool Registry Service (TRS) standard definitions for executing and sharing workflows.
-Based on our experience in developing WES, the current TRS definition lacks information such as workflow attachments (e.g., configuration files and database files, etc.) and workflow parameter templates (e.g., required inputs and their type information).
-Therefore, there is a problem that workflows cannot be executed even if the TRS URL is specified.
-Also, there are existing TRSs (e.g., Dockstore, BioContainers, etc.) that use GitHub as the registry entity.
-Here, we propose a TRS publication protocol by combining GitHub (file hosting, user authentication, and version management), GitHub Actions (continuous testing, workflow analysis), and GitHub Pages (REST API hosting).
-This allows users to retrieve information for workflow execution from the GitHub repository hosting the workflow documents via TRS definitions.
+![gh-trs Outline Drawing](https://i.imgur.com/aP5hnQS.png)
+
+**_gh-trs is now pre-release version._**
+
+## What is this?
+
+A command line tool to expand the idea of [GA4GH TRS](https://github.com/ga4gh/tool-registry-service-schemas), and to deploy TRS on personal GitHub.
+
+- Motivation
+  - Want to provide workflow document analysis results (e.g., workflow parameters template and workflow grapg) via TRS API.
+    - From our experience of creating a WES named [Sapporo](https://github.com/ddbj/sapporo)
+  - Want to deploy TRS on personal GitHub.
 
 ## Installation
 
@@ -93,10 +99,6 @@ ARGS:
 ```
 
 [Swagger viewer link](https://swagger-url.vercel.app/?url=https%3A%2F%2Fraw.githubusercontent.com%2Fsuecharo%2Fgh-trs%2Fdevelop%2Fgh-trs.openapi.yml)
-
-## Outline drawing
-
-![gh-trs Outline Drawing](https://i.imgur.com/aP5hnQS.png)
 
 ## Acknowledgement
 

@@ -95,9 +95,9 @@ impl RepoUrl {
     /// - ssh URL like: ssh://git@github.com/suecharo/gh-trs.git
     /// - ssh (github default) URL like: git@github.com:suecharo/gh-trs.git
     pub fn new(repo_url: impl AsRef<str>, scheme: &Scheme) -> Result<Self> {
-        let re_https = Regex::new(r"^https://github\.com/[\w]*/[\w\-]*\.git$")?;
-        let re_ssh = Regex::new(r"^ssh://git@github\.com/[\w]*/[\w\-]*\.git$")?;
-        let re_ssh_github = Regex::new(r"^git@github\.com:[\w]*/[\w\-]*\.git$")?;
+        let re_https = Regex::new(r"^https://github\.com/[\w]*/[\w\-]*(\.git)?$")?;
+        let re_ssh = Regex::new(r"^ssh://git@github\.com/[\w]*/[\w\-]*(\.git)?$")?;
+        let re_ssh_github = Regex::new(r"^git@github\.com:[\w]*/[\w\-]*(\.git)?$")?;
 
         let parsed_url = if re_https.is_match(repo_url.as_ref()) {
             Url::parse(repo_url.as_ref())?
@@ -116,23 +116,16 @@ impl RepoUrl {
             );
         };
 
-        if parsed_url.scheme() == "https" {
-            let ssh_url = Url::parse(&format!("ssh://git@github.com{}", parsed_url.path()))?;
-            Ok(Self {
-                https: parsed_url,
-                ssh: ssh_url,
-                scheme: scheme.clone(),
-            })
-        } else if parsed_url.scheme() == "ssh" {
-            let https_url = Url::parse(&format!("https://github.com{}", parsed_url.path()))?;
-            Ok(Self {
-                https: https_url,
-                ssh: parsed_url,
-                scheme: scheme.clone(),
-            })
+        let path = if parsed_url.path().ends_with(".git") {
+            parsed_url.path().to_string()
         } else {
-            unreachable!()
-        }
+            format!("{}.git", parsed_url.path())
+        };
+        Ok(Self {
+            https: Url::parse(&format!("https://github.com{}", &path))?,
+            ssh: Url::parse(&format!("ssh://git@github.com{}", &path))?,
+            scheme: scheme.clone(),
+        })
     }
 
     pub fn path_segments(&self) -> Result<Vec<&str>> {

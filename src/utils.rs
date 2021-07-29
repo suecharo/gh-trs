@@ -1,7 +1,7 @@
 use crate::git;
 use crate::github;
 use crate::Opt;
-use anyhow::{anyhow, bail, ensure, Context, Result};
+use anyhow::{bail, ensure, Context, Result};
 use git::RepoUrl;
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -65,6 +65,7 @@ pub struct Config {
 }
 
 impl Config {
+    #[allow(dead_code)]
     pub fn new() -> Result<Self> {
         Ok(Config { tools: Vec::new() })
     }

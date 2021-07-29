@@ -1,15 +1,12 @@
 use crate::git;
 use crate::github;
-use crate::Scheme;
-
-use anyhow::{anyhow, ensure};
-use anyhow::{Context, Result};
+use crate::Opt;
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use git::RepoUrl;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_yaml;
 use std::collections::HashSet;
-use std::ffi::OsStr;
 use std::fs::File;
 use std::hash::Hash;
 use std::io::prelude::*;
@@ -19,20 +16,16 @@ use url::Url;
 
 /// Priority:
 ///
-/// 1. Command line options
-/// 2. URL of the git repository in cwd
+/// 1. Command line option: `gh-trs --repo-url`
+/// 2. GitHub repository of cwd
 ///
 /// Output error if host is not github.com
-pub fn resolve_repository_url<S: AsRef<str>>(
-    git: impl AsRef<OsStr>,
-    cwd: impl AsRef<Path>,
-    remote: impl AsRef<str>,
-    opt_repo_url: Option<S>,
-    opt_scheme: &Scheme,
-) -> Result<RepoUrl> {
-    Ok(match opt_repo_url {
-        Some(opt_repo_url) => RepoUrl::new(opt_repo_url, opt_scheme)?,
-        None => git::get_repo_url(&git, &cwd, remote, opt_scheme)?,
+///
+/// * `opt` - Argument options defined at `main.rs`
+pub fn resolve_repository_url(opt: &Opt) -> Result<RepoUrl> {
+    Ok(match &opt.repo_url {
+        Some(repo_url) => RepoUrl::new(&repo_url, &opt.scheme)?,
+        None => git::get_repo_url(&opt)?,
     })
 }
 
@@ -46,20 +39,17 @@ pub struct CommitUser {
 ///
 /// 1. Command line options
 /// 2. name and email of the git repository in cwd
-pub fn resolve_commit_user<S: AsRef<str>>(
-    git: impl AsRef<OsStr>,
-    cwd: impl AsRef<Path>,
-    opt_name: Option<S>,
-    opt_email: Option<S>,
-) -> Result<CommitUser> {
+///
+/// * `opt` - Argument options defined at `main.rs`
+pub fn resolve_commit_user(opt: &Opt) -> Result<CommitUser> {
     let commit_user = CommitUser {
-        name: match opt_name {
-            Some(opt_name) => opt_name.as_ref().to_string(),
-            None => git::get_user_name(&git, &cwd)?,
+        name: match &opt.user_name {
+            Some(name) => name.to_string(),
+            None => git::get_user_name(&opt)?,
         },
-        email: match opt_email {
-            Some(opt_email) => opt_email.as_ref().to_string(),
-            None => git::get_user_email(&git, &cwd)?,
+        email: match &opt.user_email {
+            Some(email) => email.to_string(),
+            None => git::get_user_email(&opt)?,
         },
     };
     ensure!(
@@ -146,6 +136,8 @@ pub struct Testing {
 
 /// Load the contents of the file.
 /// The config_file can be a local file or a remote file.
+
+/// * `config_file` - The path to the config file.
 pub fn load_config(config_file: impl AsRef<str>) -> Result<String> {
     Ok(match Url::parse(config_file.as_ref()) {
         Ok(url) => {
@@ -157,13 +149,11 @@ pub fn load_config(config_file: impl AsRef<str>) -> Result<String> {
                 response.status().is_success(),
                 format!("Failed to get from remote URL: {:?}", url)
             );
-            response.text().context("Failed to decode response body.")?
+            response.text()?
         }
         Err(_) => {
             // Local file
-            let config_file_path = Path::new(config_file.as_ref())
-                .canonicalize()
-                .context("Failed to resolve config file path.")?;
+            let config_file_path = Path::new(config_file.as_ref()).canonicalize()?;
             let mut reader = BufReader::new(
                 File::open(&config_file_path)
                     .with_context(|| format!("Failed to open file: {:?}", &config_file_path))?,
@@ -177,26 +167,33 @@ pub fn load_config(config_file: impl AsRef<str>) -> Result<String> {
     })
 }
 
+/// Check duplicate of inputted iterable.
+///
+/// * `iter` - The iterable to check.
 fn check_duplicate<T>(iter: T) -> bool
 where
-    T: Iterator,
+    T: IntoIterator,
     T::Item: Eq + Hash,
 {
     let mut uniq = HashSet::new();
     iter.into_iter().all(|x| uniq.insert(x))
 }
 
+/// Validate the contents of the config file.
+///
+/// * `config_content` - The config file contents.
 pub fn validate_and_convert_config(config_content: impl AsRef<str>) -> Result<Config> {
     // Validate config_content here by str -> struct
-    let config: Config = serde_yaml::from_str(config_content.as_ref())
-        .context("Failed to convert to config instance.")?;
+    let config: Config = serde_yaml::from_str(config_content.as_ref())?;
     // Check that there are no duplicate id's
     let ids = config
         .tools
         .iter()
         .map(|tool| tool.id.as_str())
         .collect::<Vec<&str>>();
-    // let a = check_duplicate(ids);
+    if !check_duplicate(ids) {
+        bail!("There is a duplicate tool id.")
+    }
 
     // Convert url to github raw-contents url
     Ok(Config {
@@ -208,6 +205,9 @@ pub fn validate_and_convert_config(config_content: impl AsRef<str>) -> Result<Co
     })
 }
 
+/// Extract repository owner from the repository URL
+///
+/// * `repo_url` - The repository URL.
 pub fn repo_owner(repo_url: &RepoUrl) -> Result<String> {
     let path_segments = repo_url
         .https
@@ -221,6 +221,9 @@ pub fn repo_owner(repo_url: &RepoUrl) -> Result<String> {
     Ok(path_segments[0].to_string())
 }
 
+/// Extract repository name from the repository URL
+///
+/// * `repo_url` - The repository URL.
 pub fn repo_name(repo_url: &RepoUrl) -> Result<String> {
     let path_segments = repo_url
         .https
@@ -237,10 +240,10 @@ pub fn repo_name(repo_url: &RepoUrl) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::git::{clone, set_commit_user};
+    use crate::Scheme;
     use std::env;
     use std::path::Path;
-    use temp_dir::TempDir;
+    use structopt::StructOpt;
     use url::Url;
 
     mod resolve_repository_url {
@@ -248,72 +251,19 @@ mod tests {
 
         #[test]
         fn ok_with_opt() {
-            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
-            resolve_repository_url(
-                "git",
-                temp_dir.path(),
-                "origin",
-                Some("https://github.com/suecharo/gh-trs.git"),
-                &Scheme::Https,
-            )
-            .unwrap();
+            let opt = Opt::from_iter(&[
+                "gh-trs",
+                "gh-trs.yml",
+                "--repo-url",
+                "https://github.com/suecharo/gh-trs.git",
+            ]);
+            resolve_repository_url(&opt).unwrap();
         }
 
         #[test]
         fn ok_with_git_dir() {
-            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
-            let repo_url =
-                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
-            clone("git", temp_dir.path(), &repo_url, "main").unwrap();
-            resolve_repository_url(
-                "git",
-                temp_dir.path(),
-                "origin",
-                None as Option<&str>,
-                &Scheme::Https,
-            )
-            .unwrap();
-        }
-    }
-
-    mod resolve_commit_user {
-        use super::*;
-
-        #[test]
-        fn ok_with_opt() {
-            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
-            let commit_user = resolve_commit_user(
-                "git",
-                temp_dir.path(),
-                Some("suecharo"),
-                Some("foobar@example.com"),
-            )
-            .unwrap();
-            assert_eq!(commit_user.name, "suecharo");
-            assert_eq!(commit_user.email, "foobar@example.com");
-        }
-
-        #[test]
-        fn ok_with_config() {
-            let temp_dir = TempDir::with_prefix("gh-trs").unwrap();
-            let repo_url =
-                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
-            clone("git", temp_dir.path(), &repo_url, "main").unwrap();
-            let commit_user = CommitUser {
-                name: "suecharo".to_string(),
-                email: "foobar@example.com".to_string(),
-            };
-            set_commit_user("git", temp_dir.path(), &commit_user).unwrap();
-
-            let result = resolve_commit_user(
-                "git",
-                temp_dir.path(),
-                None as Option<&str>,
-                None as Option<&str>,
-            )
-            .unwrap();
-            assert_eq!(result.name, commit_user.name);
-            assert_eq!(result.email, commit_user.email);
+            let opt = Opt::from_iter(&["gh-trs", "gh-trs.yml"]);
+            resolve_repository_url(&opt).unwrap();
         }
     }
 
@@ -352,8 +302,9 @@ mod tests {
 
         #[test]
         fn ok() {
-            assert!(check_duplicate(vec!(&[] as &[&str])));
-            assert!(check_duplicate(vec!(["foo", "foo"])));
+            assert!(check_duplicate(&[""]));
+            assert!(check_duplicate(&["foo", "bar"]));
+            assert_eq!(check_duplicate(&["foo", "foo", "bar"]), false);
         }
     }
 

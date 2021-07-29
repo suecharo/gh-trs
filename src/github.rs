@@ -1,5 +1,6 @@
-use anyhow::{anyhow, bail, ensure};
-use anyhow::{Context, Result};
+use crate::git::RepoUrl;
+use crate::utils::{repo_name, repo_owner};
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use regex::Regex;
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -19,10 +20,12 @@ use url::Url;
 /// - `https://raw.githubusercontent.com/suecharo/gh-trs/0fb996810f153be9ad152565227a10e402950953/tests/resources/cwltool/fastqc.cwl`
 ///
 /// If the url is not github.com or raw.githubusercontent.com, return an Error.
+///
+/// * `file_url` - The file url to convert
 pub fn convert_github_raw_contents_url(file_url: &Url) -> Result<Url> {
     ensure!(
-        ["http", "https", "ftp"].contains(&file_url.scheme()),
-        "The URL scheme of the input file is not http, https or ftp."
+        ["http", "https"].contains(&file_url.scheme()),
+        "The URL scheme of the input file is not http or https."
     );
     let host = file_url
         .host_str()
@@ -74,8 +77,10 @@ pub fn convert_github_raw_contents_url(file_url: &Url) -> Result<Url> {
 }
 
 /// Check if a str is in a 40 character git commit hash.
+///
+/// * `str` - The string to check
 fn is_commit_hash(hash: impl AsRef<str>) -> Result<()> {
-    let re = Regex::new(r"^[0-9a-f]{40}$").context("Failed to compile regular expression.")?;
+    let re = Regex::new(r"^[0-9a-f]{40}$")?;
     if re.is_match(hash.as_ref()) {
         Ok(())
     } else {
@@ -96,7 +101,11 @@ struct ResponseGitHubBranchApiCommit {
     sha: String,
 }
 
-/// Send a GET request to api.github.com to get the latest commit hash
+/// Send a GET request to api.github.com to get the latest commit hash.
+///
+/// * `repo_owner` - The owner of the repository
+/// * `repo_name` - The name of the repository
+/// * `branch` - The branch of the repository
 fn get_latest_commit_hash(
     repo_owner: impl AsRef<str>,
     repo_name: impl AsRef<str>,
@@ -118,13 +127,37 @@ fn get_latest_commit_hash(
         response.status().is_success(),
         format!("Failed to get request to: {}", url.as_str())
     );
-    let body = response
-        .json::<ResponseGitHubBranchApi>()
-        .context("Failed to parse the json in the response body.")?;
+    let body = response.json::<ResponseGitHubBranchApi>()?;
     match is_commit_hash(&body.commit.sha) {
         Ok(_) => Ok(body.commit.sha),
         Err(_) => bail!("Failed to get the latest commit hash."),
     }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct ResponseGitHubRepository {
+    default_branch: String,
+}
+
+/// Send a GET request to api.github.com to get the default branch name of a GitHub repository.
+///
+/// * `repo_url` - The URL of the repository
+pub fn get_default_branch_name(repo_url: &RepoUrl) -> Result<String> {
+    let repo_owner = repo_owner(repo_url)?;
+    let repo_name = repo_name(repo_url)?;
+    let url = format!("https://api.github.com/repos/{}/{}", repo_owner, repo_name);
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .get(&url)
+        .header(reqwest::header::USER_AGENT, "gh-trs")
+        .send()
+        .with_context(|| format!("Failed to get request to: {}", url.as_str()))?;
+    ensure!(
+        response.status().is_success(),
+        format!("Failed to get request to: {}", url.as_str())
+    );
+    let body = response.json::<ResponseGitHubRepository>()?;
+    Ok(body.default_branch)
 }
 
 #[cfg(test)]
@@ -205,6 +238,18 @@ mod tests {
         #[test]
         fn err_non_existent_branch_name() {
             assert!(get_latest_commit_hash("suecharo", "gh-trs", "non_existent_branch").is_err());
+        }
+    }
+
+    mod get_default_branch_name {
+        use super::*;
+        use crate::Scheme;
+
+        #[test]
+        fn ok() {
+            let repo_url =
+                RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
+            assert_eq!(get_default_branch_name(&repo_url).unwrap(), "main");
         }
     }
 }

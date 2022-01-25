@@ -24,3 +24,6 @@ url = { version = "2.2.2", features = ["serde"] }
 anyhow = "1.0.40"
 human-panic = "1.0.3"
 regex = "1.5.4"
+which = "4.2.2"
+colour = "0.6.0"
+sha2 = "0.9.5"

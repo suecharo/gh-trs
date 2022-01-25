@@ -134,32 +134,6 @@ fn get_latest_commit_hash(
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct ResponseGitHubRepository {
-    default_branch: String,
-}
-
-/// Send a GET request to api.github.com to get the default branch name of a GitHub repository.
-///
-/// * `repo_url` - The URL of the repository
-pub fn get_default_branch_name(repo_url: &RepoUrl) -> Result<String> {
-    let repo_owner = repo_owner(repo_url)?;
-    let repo_name = repo_name(repo_url)?;
-    let url = format!("https://api.github.com/repos/{}/{}", repo_owner, repo_name);
-    let client = reqwest::blocking::Client::new();
-    let response = client
-        .get(&url)
-        .header(reqwest::header::USER_AGENT, "gh-trs")
-        .send()
-        .with_context(|| format!("Failed to get request to: {}", url.as_str()))?;
-    ensure!(
-        response.status().is_success(),
-        format!("Failed to get request to: {}", url.as_str())
-    );
-    let body = response.json::<ResponseGitHubRepository>()?;
-    Ok(body.default_branch)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -241,7 +215,7 @@ mod tests {
         }
     }
 
-    mod get_default_branch_name {
+    mod default_branch_name {
         use super::*;
         use crate::Scheme;
 
@@ -249,7 +223,7 @@ mod tests {
         fn ok() {
             let repo_url =
                 RepoUrl::new("https://github.com/suecharo/gh-trs.git", &Scheme::Https).unwrap();
-            assert_eq!(get_default_branch_name(&repo_url).unwrap(), "main");
+            assert_eq!(default_branch_name(&repo_url).unwrap(), "main");
         }
     }
 }

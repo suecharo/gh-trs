@@ -191,13 +191,11 @@ pub fn get_latest_commit_hash(
 }
 
 /// https://docs.github.com/ja/rest/reference/users#get-a-user
-#[cfg(not(tarpaulin))]
 fn get_user(gh_token: impl AsRef<str>) -> Result<Value> {
     let url = Url::parse("https://api.github.com/user")?;
     get_request(gh_token, &url, &[])
 }
 
-#[cfg(not(tarpaulin))]
 pub fn get_author(gh_token: impl AsRef<str>) -> Result<String> {
     let res = get_user(gh_token)?;
     let err_message = "Failed to parse the response when getting author";
@@ -213,8 +211,6 @@ pub fn get_author(gh_token: impl AsRef<str>) -> Result<String> {
         .ok_or(anyhow!(err_message))?;
     Ok(format!("{} <@{}>", name, gh_account))
 }
-
-///
 
 /// https://docs.github.com/ja/rest/reference/repos#get-a-repository-readme
 pub fn get_readme_url(

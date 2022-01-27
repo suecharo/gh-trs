@@ -17,19 +17,23 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
+
       - name: "Cache builder image"
         id: cache-builder-image
         uses: actions/cache@v2
         with:
           path: musl-builder-image
           key: musl-builder-image
+
       - name: "Pull and save builder image"
         if: steps.cache-builder-image.outputs.cache-hit != 'true'
         run: |
           docker pull ekidd/rust-musl-builder:stable
           docker save ekidd/rust-musl-builder:stable -o musl-builder-image
+
       - name: "Load builder image"
         run: docker load -i musl-builder-image
+
       - name: "Cache Rust"
         uses: actions/cache@v2
         with:
@@ -40,8 +44,10 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: "Build binary"
         run: docker run --rm -u root -v `pwd`:/home/rust/src ekidd/rust-musl-builder:stable cargo build --release
+
       - name: "Upload binary"
         uses: actions/upload-artifact@v2
         with:

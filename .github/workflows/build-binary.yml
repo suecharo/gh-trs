@@ -1,12 +1,12 @@
 name: build_binary
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "src/**"
-      - "Cargo.**"
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - "src/**"
+  #     - "Cargo.**"
   workflow_dispatch: {}
 
 jobs:

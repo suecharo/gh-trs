@@ -13,6 +13,7 @@ use std::path::Path;
 use url::Url;
 use uuid::Uuid;
 
+#[cfg(not(tarpaulin_include))]
 pub fn make_template(
     wf_loc: &Url,
     gh_token: &Option<impl AsRef<str>>,
@@ -27,8 +28,8 @@ pub fn make_template(
     let primary_wf = raw_url::RawUrl::new(
         &gh_token,
         wf_loc,
-        &mut None::<HashMap<String, String>>,
-        &mut None::<HashMap<String, String>>,
+        None::<&mut HashMap<String, String>>,
+        None::<&mut HashMap<String, String>>,
     )?;
 
     let wf_id = Uuid::new_v4();
@@ -39,8 +40,8 @@ pub fn make_template(
     let readme = raw_url::RawUrl::new(
         &gh_token,
         &github_api::get_readme_url(&gh_token, &primary_wf.owner, &primary_wf.name)?,
-        &mut None::<HashMap<String, String>>,
-        &mut None::<HashMap<String, String>>,
+        None::<&mut HashMap<String, String>>,
+        None::<&mut HashMap<String, String>>,
     )?
     .to_url()?;
     let language = inspect::inspect_wf_type_version(&primary_wf.to_url()?)?;

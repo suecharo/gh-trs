@@ -16,6 +16,7 @@ use log::{debug, error, info};
 use std::process::exit;
 use structopt::StructOpt;
 
+#[cfg(not(tarpaulin_include))]
 fn main() -> Result<()> {
     let args = args::Args::from_args();
     let verbose = match args {

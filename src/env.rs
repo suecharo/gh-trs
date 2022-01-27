@@ -2,6 +2,7 @@ use anyhow::{bail, Result};
 use dotenv::dotenv;
 use std::env;
 
+#[cfg(not(tarpaulin_include))]
 pub fn github_token(arg_token: &Option<impl AsRef<str>>) -> Result<String> {
     dotenv().ok();
     match arg_token {

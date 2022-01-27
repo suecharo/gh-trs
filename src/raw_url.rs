@@ -29,8 +29,8 @@ impl RawUrl {
     pub fn new(
         gh_token: impl AsRef<str>,
         url: &Url,
-        branch_memo: &mut Option<HashMap<String, String>>,
-        commit_memo: &mut Option<HashMap<String, String>>,
+        branch_memo: Option<&mut HashMap<String, String>>,
+        commit_memo: Option<&mut HashMap<String, String>>,
     ) -> Result<Self> {
         let host = url
             .host_str()
@@ -201,26 +201,26 @@ mod tests {
         let raw_url_1 = RawUrl::new(
             &gh_token,
             &url_1,
-            &mut None::<HashMap<String, String>>,
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )?;
         let raw_url_2 = RawUrl::new(
             &gh_token,
             &url_2,
-            &mut None::<HashMap<String, String>>,
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )?;
         let raw_url_3 = RawUrl::new(
             &gh_token,
             &url_3,
-            &mut None::<HashMap<String, String>>,
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )?;
         let raw_url_4 = RawUrl::new(
             &gh_token,
             &url_4,
-            &mut None::<HashMap<String, String>>,
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )?;
 
         let expect = RawUrl {
@@ -255,8 +255,8 @@ mod tests {
         let err = RawUrl::new(
             &gh_token,
             &url,
-            &mut None::<HashMap<String, String>>,
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )
         .unwrap_err();
         assert_eq!(
@@ -273,8 +273,8 @@ mod tests {
         let err = RawUrl::new(
             &gh_token,
             &url,
-            &mut None::<HashMap<String, String>>,
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )
         .unwrap_err();
         assert_eq!(
@@ -292,8 +292,8 @@ mod tests {
         let err = RawUrl::new(
             &gh_token,
             &url,
-            &mut None::<HashMap<String, String>>,
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )
         .unwrap_err();
         assert!(err.to_string().contains(
@@ -326,8 +326,8 @@ mod tests {
         let raw_url = RawUrl::new(
             &gh_token,
             &url,
-            &mut None::<HashMap<String, String>>,
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )?;
         let base_dir = raw_url.base_dir()?;
         assert_eq!(base_dir, PathBuf::from("path/to"));
@@ -351,8 +351,8 @@ mod tests {
         let raw_url = RawUrl::new(
             &gh_token,
             &url,
-            &mut None::<HashMap<String, String>>,
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )?;
         let to_url = raw_url.to_url()?;
         assert_eq!(
@@ -385,10 +385,10 @@ mod tests {
         let raw_url = RawUrl::new(
             &gh_token,
             &url,
-            &mut None::<HashMap<String, String>>,
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )?;
-        let to_url = raw_url.to_url()?;
+        let to_url = raw_url.to_base_url()?;
         assert_eq!(
             to_url,
             Url::parse(&format!(

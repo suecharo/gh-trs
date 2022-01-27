@@ -140,3 +140,49 @@ fn inspect_nfl_version(wf_content: impl AsRef<str>) -> Result<String> {
 fn inspect_smk_version(_wf_content: impl AsRef<str>) -> Result<String> {
     Ok("1.0".to_string())
 }
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_inspect_wf_type_version_cwl() -> Result<()> {
+        let url = Url::parse("https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/CWL/wf/trimming_and_qc.cwl")?;
+        let wf_type_version = inspect_wf_type_version(&url)?;
+        assert_eq!(wf_type_version.r#type, Some(LanguageType::Cwl));
+        assert_eq!(wf_type_version.version, Some("v1.0".to_string()));
+        Ok(())
+    }
+
+    #[test]
+    fn test_inspect_wf_type_version_wdl() -> Result<()> {
+        let url = Url::parse("https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/WDL/wf/dockstore-tool-bamstats.wdl")?;
+        let wf_type_version = inspect_wf_type_version(&url)?;
+        assert_eq!(wf_type_version.r#type, Some(LanguageType::Wdl));
+        assert_eq!(wf_type_version.version, Some("1.0".to_string()));
+        Ok(())
+    }
+
+    #[test]
+    fn test_inspect_wf_type_version_nfl() -> Result<()> {
+        let url = Url::parse(
+            "https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/NFL/wf/file_input.nf",
+        )?;
+        let wf_type_version = inspect_wf_type_version(&url)?;
+        assert_eq!(wf_type_version.r#type, Some(LanguageType::Nfl));
+        assert_eq!(wf_type_version.version, Some("1.0".to_string()));
+        Ok(())
+    }
+
+    #[test]
+    fn test_inspect_wf_type_version_smk() -> Result<()> {
+        let url = Url::parse(
+            "https://raw.githubusercontent.com/suecharo/gh-trs/main/tests/SMK/wf/Snakefile",
+        )?;
+        let wf_type_version = inspect_wf_type_version(&url)?;
+        assert_eq!(wf_type_version.r#type, Some(LanguageType::Smk));
+        assert_eq!(wf_type_version.version, Some("1.0".to_string()));
+        Ok(())
+    }
+}

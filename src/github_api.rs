@@ -82,7 +82,7 @@ pub fn get_default_branch(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
-    memo: &mut Option<HashMap<String, String>>,
+    memo: Option<&mut HashMap<String, String>>,
 ) -> Result<String> {
     let err_message = "Failed to parse the response when getting default branch";
     match memo {
@@ -153,7 +153,7 @@ pub fn get_latest_commit_hash(
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
     branch: impl AsRef<str>,
-    memo: &mut Option<HashMap<String, String>>,
+    memo: Option<&mut HashMap<String, String>>,
 ) -> Result<String> {
     let err_message = "Failed to parse the response when getting latest commit hash";
     match memo {
@@ -191,11 +191,13 @@ pub fn get_latest_commit_hash(
 }
 
 /// https://docs.github.com/ja/rest/reference/users#get-a-user
+#[cfg(not(tarpaulin))]
 fn get_user(gh_token: impl AsRef<str>) -> Result<Value> {
     let url = Url::parse("https://api.github.com/user")?;
     get_request(gh_token, &url, &[])
 }
 
+#[cfg(not(tarpaulin))]
 pub fn get_author(gh_token: impl AsRef<str>) -> Result<String> {
     let res = get_user(gh_token)?;
     let err_message = "Failed to parse the response when getting author";
@@ -316,9 +318,18 @@ mod tests {
             &gh_token,
             "suecharo",
             "gh-trs",
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )?;
         assert_eq!(branch, "main");
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_default_branch_with_memo() -> Result<()> {
+        let gh_token = env::github_token(&None::<String>)?;
+        let mut memo = HashMap::new();
+        get_default_branch(&gh_token, "suecharo", "gh-trs", Some(&mut memo))?;
+        get_default_branch(&gh_token, "suecharo", "gh-trs", Some(&mut memo))?;
         Ok(())
     }
 
@@ -330,8 +341,17 @@ mod tests {
             "suecharo",
             "gh-trs",
             "main",
-            &mut None::<HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
         )?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_latest_commit_hash_with_memo() -> Result<()> {
+        let gh_token = env::github_token(&None::<String>)?;
+        let mut memo = HashMap::new();
+        get_latest_commit_hash(&gh_token, "suecharo", "gh-trs", "main", Some(&mut memo))?;
+        get_latest_commit_hash(&gh_token, "suecharo", "gh-trs", "main", Some(&mut memo))?;
         Ok(())
     }
 
@@ -369,6 +389,14 @@ mod tests {
         let gh_token = env::github_token(&None::<String>)?;
         let file_list = get_file_list_recursive(&gh_token, "suecharo", "gh-trs", "src", "main")?;
         assert!(file_list.contains(&PathBuf::from("src/main.rs")));
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_license() -> Result<()> {
+        let gh_token = env::github_token(&None::<String>)?;
+        let license = get_license(&gh_token, "suecharo", "gh-trs")?;
+        assert_eq!(license, "Apache-2.0".to_string());
         Ok(())
     }
 }

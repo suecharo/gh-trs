@@ -139,3 +139,59 @@ pub enum TestFileType {
     WfEngineParams,
     Other,
 }
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_file_new() -> Result<()> {
+        let url = Url::parse("https://example.com/path/to/file.txt")?;
+        let target = PathBuf::from("path/to/file.txt");
+        let file = File::new(&url, Some(&target), FileType::Primary)?;
+        assert_eq!(file.url, url);
+        assert_eq!(file.target, target);
+        assert_eq!(file.r#type, FileType::Primary);
+        Ok(())
+    }
+
+    #[test]
+    fn test_file_new_no_target() -> Result<()> {
+        let url = Url::parse("https://example.com/path/to/file.txt")?;
+        let file = File::new(&url, None::<PathBuf>, FileType::Primary)?;
+        assert_eq!(file.url, url);
+        assert_eq!(file.target, PathBuf::from("file.txt"));
+        assert_eq!(file.r#type, FileType::Primary);
+        Ok(())
+    }
+
+    #[test]
+    fn test_testing_default() -> Result<()> {
+        let testing = Testing::default();
+        assert_eq!(testing.id, "test_1");
+        assert_eq!(testing.files.len(), 3);
+        Ok(())
+    }
+
+    #[test]
+    fn test_test_file_new() -> Result<()> {
+        let url = Url::parse("https://example.com/path/to/file.txt")?;
+        let target = PathBuf::from("path/to/file.txt");
+        let file = TestFile::new(&url, Some(&target), TestFileType::WfParams)?;
+        assert_eq!(file.url, url);
+        assert_eq!(file.target, target);
+        assert_eq!(file.r#type, TestFileType::WfParams);
+        Ok(())
+    }
+
+    #[test]
+    fn test_test_file_no_target() -> Result<()> {
+        let url = Url::parse("https://example.com/path/to/file.txt")?;
+        let file = TestFile::new(&url, None::<PathBuf>, TestFileType::WfParams)?;
+        assert_eq!(file.url, url);
+        assert_eq!(file.target, PathBuf::from("file.txt"));
+        assert_eq!(file.r#type, TestFileType::WfParams);
+        Ok(())
+    }
+}

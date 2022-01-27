@@ -335,6 +335,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(tarpaulin))]
     fn test_get_author() -> Result<()> {
         let gh_token = env::github_token(&None::<String>)?;
         get_author(&gh_token)?;

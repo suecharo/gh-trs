@@ -1,16 +1,22 @@
-version: "3"
+version: "3.5"
 services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile-dev
+      dockerfile: Dockerfile
     image: gh-trs-dev
     container_name: gh-trs-dev
     volumes:
       - ${PWD}:/app
-      - /app/target
+      # - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - RUST_BACKTRACE=1
     restart: on-failure
     working_dir: /app
-    command: ["sleep", "infinity"]
+    command: [ "sleep", "infinity" ]
+    networks:
+      - gh-trs-network
+
+networks:
+  gh-trs-network:
+    name: gh-trs-network

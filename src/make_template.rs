@@ -97,3 +97,25 @@ fn obtain_wf_files(
         })
         .collect::<Result<Vec<_>>>()?)
 }
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_obtain_wf_files() -> Result<()> {
+        let gh_token = env::github_token(&None::<String>)?;
+        let primary_wf = raw_url::RawUrl::new(
+            &gh_token,
+            &Url::parse(
+                "https://github.com/suecharo/gh-trs/blob/main/tests/CWL/wf/trimming_and_qc.cwl",
+            )?,
+            None::<&mut HashMap<String, String>>,
+            None::<&mut HashMap<String, String>>,
+        )?;
+        let files = obtain_wf_files(&gh_token, &primary_wf)?;
+        assert_eq!(files.len(), 3);
+        Ok(())
+    }
+}

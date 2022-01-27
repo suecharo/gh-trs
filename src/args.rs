@@ -68,6 +68,7 @@ pub enum Args {
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
     use super::*;
     use anyhow::Result;

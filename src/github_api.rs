@@ -304,6 +304,7 @@ pub fn get_file_list_recursive(
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
     use super::*;
     use crate::env;

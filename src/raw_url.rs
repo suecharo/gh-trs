@@ -155,6 +155,7 @@ fn is_commit_hash(hash: impl AsRef<str>) -> Result<()> {
 }
 
 #[cfg(test)]
+#[cfg(not(tarpaulin_include))]
 mod tests {
     use super::*;
     use crate::env;
@@ -173,28 +174,28 @@ mod tests {
             &owner,
             &name,
             &branch,
-            &file_path.display()
+            &file_path.to_string_lossy()
         ))?;
         let url_2 = Url::parse(&format!(
             "https://github.com/{}/{}/blob/{}/{}",
             &owner,
             &name,
             &commit,
-            &file_path.display()
+            &file_path.to_string_lossy()
         ))?;
         let url_3 = Url::parse(&format!(
             "https://raw.githubusercontent.com/{}/{}/{}/{}",
             &owner,
             &name,
             &branch,
-            &file_path.display()
+            &file_path.to_string_lossy()
         ))?;
         let url_4 = Url::parse(&format!(
             "https://raw.githubusercontent.com/{}/{}/{}/{}",
             &owner,
             &name,
             &commit,
-            &file_path.display()
+            &file_path.to_string_lossy()
         ))?;
 
         let raw_url_1 = RawUrl::new(
@@ -286,7 +287,8 @@ mod tests {
     #[test]
     fn test_raw_url_invalid_path() -> Result<()> {
         let gh_token = env::github_token(&None::<String>)?;
-        let url = Url::parse("https://github.com/owner/repo/path/to/file")?;
+        let url =
+            Url::parse("https://github.com/suecharo/gh-trs/blob/invalid_branch/path/to/workflow")?;
         let err = RawUrl::new(
             &gh_token,
             &url,
@@ -295,7 +297,7 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains(
-            "Failed to get request to https://api.github.com/repos/owner/repo/branches/to"
+            "Failed to get request to https://api.github.com/repos/suecharo/gh-trs/branches/invalid_branch"
         ));
         Ok(())
     }
@@ -319,7 +321,7 @@ mod tests {
             &owner,
             &name,
             &commit,
-            &file_path.display()
+            &file_path.to_string_lossy()
         ))?;
         let raw_url = RawUrl::new(
             &gh_token,
@@ -329,6 +331,71 @@ mod tests {
         )?;
         let base_dir = raw_url.base_dir()?;
         assert_eq!(base_dir, PathBuf::from("path/to"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_to_url() -> Result<()> {
+        let gh_token = env::github_token(&None::<String>)?;
+        let owner = "suecharo".to_string();
+        let name = "gh-trs".to_string();
+        let commit = "f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9".to_string();
+        let file_path = PathBuf::from("path/to/workflow.yml");
+        let url = Url::parse(&format!(
+            "https://github.com/{}/{}/blob/{}/{}",
+            &owner,
+            &name,
+            &commit,
+            &file_path.to_string_lossy()
+        ))?;
+        let raw_url = RawUrl::new(
+            &gh_token,
+            &url,
+            &mut None::<HashMap<String, String>>,
+            &mut None::<HashMap<String, String>>,
+        )?;
+        let to_url = raw_url.to_url()?;
+        assert_eq!(
+            to_url,
+            Url::parse(&format!(
+                "https://raw.githubusercontent.com/{}/{}/{}/{}",
+                &owner,
+                &name,
+                &commit,
+                &file_path.to_string_lossy()
+            ))?
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_to_base_url() -> Result<()> {
+        let gh_token = env::github_token(&None::<String>)?;
+        let owner = "suecharo".to_string();
+        let name = "gh-trs".to_string();
+        let commit = "f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9".to_string();
+        let file_path = PathBuf::from("path/to/workflow.yml");
+        let url = Url::parse(&format!(
+            "https://github.com/{}/{}/blob/{}/{}",
+            &owner,
+            &name,
+            &commit,
+            &file_path.to_string_lossy()
+        ))?;
+        let raw_url = RawUrl::new(
+            &gh_token,
+            &url,
+            &mut None::<HashMap<String, String>>,
+            &mut None::<HashMap<String, String>>,
+        )?;
+        let to_url = raw_url.to_url()?;
+        assert_eq!(
+            to_url,
+            Url::parse(&format!(
+                "https://raw.githubusercontent.com/{}/{}/{}/path/to/",
+                &owner, &name, &commit,
+            ))?
+        );
         Ok(())
     }
 }

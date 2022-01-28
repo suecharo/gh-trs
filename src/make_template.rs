@@ -35,7 +35,7 @@ pub fn make_template(
     let wf_id = Uuid::new_v4();
     let wf_version = "1.0.0".to_string();
     let wf_license = github_api::get_license(&gh_token, &primary_wf.owner, &primary_wf.name)?;
-    let author = github_api::get_author(&gh_token)?;
+    let author = config::Author::new_from_api(&gh_token)?;
     let wf_name = primary_wf.file_stem()?;
     let readme = raw_url::RawUrl::new(
         &gh_token,

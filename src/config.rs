@@ -1,3 +1,5 @@
+use crate::github_api;
+
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -9,8 +11,29 @@ pub struct Config {
     pub id: Uuid,
     pub version: String,
     pub license: String,
-    pub authors: Vec<String>,
+    pub authors: Vec<Author>,
     pub workflow: Workflow,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct Author {
+    pub github_account: String,
+    pub name: String,
+    pub affiliation: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub orcid: Option<String>,
+}
+
+impl Author {
+    pub fn new_from_api(gh_token: impl AsRef<str>) -> Result<Self> {
+        let (github_account, name, affiliation) = github_api::get_author_info(gh_token)?;
+        Ok(Self {
+            github_account,
+            name,
+            affiliation,
+            orcid: None::<String>,
+        })
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]

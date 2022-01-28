@@ -196,20 +196,28 @@ fn get_user(gh_token: impl AsRef<str>) -> Result<Value> {
     get_request(gh_token, &url, &[])
 }
 
-pub fn get_author(gh_token: impl AsRef<str>) -> Result<String> {
+pub fn get_author_info(gh_token: impl AsRef<str>) -> Result<(String, String, String)> {
     let res = get_user(gh_token)?;
     let err_message = "Failed to parse the response when getting author";
     let gh_account = res
         .get("login")
         .ok_or(anyhow!(err_message))?
         .as_str()
-        .ok_or(anyhow!(err_message))?;
+        .ok_or(anyhow!(err_message))?
+        .to_string();
     let name = res
         .get("name")
         .ok_or(anyhow!(err_message))?
         .as_str()
-        .ok_or(anyhow!(err_message))?;
-    Ok(format!("{} <@{}>", name, gh_account))
+        .ok_or(anyhow!(err_message))?
+        .to_string();
+    let affiliation = res
+        .get("company")
+        .ok_or(anyhow!(err_message))?
+        .as_str()
+        .ok_or(anyhow!(err_message))?
+        .to_string();
+    Ok((gh_account, name, affiliation))
 }
 
 /// https://docs.github.com/ja/rest/reference/repos#get-a-repository-readme
@@ -353,9 +361,9 @@ mod tests {
 
     #[test]
     #[cfg(not(tarpaulin))]
-    fn test_get_author() -> Result<()> {
+    fn test_get_author_info() -> Result<()> {
         let gh_token = env::github_token(&None::<String>)?;
-        get_author(&gh_token)?;
+        get_author_info(&gh_token)?;
         Ok(())
     }
 

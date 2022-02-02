@@ -1,0 +1,58 @@
+{
+  "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "authors":
+    [
+      {
+        "github_account": "suecharo",
+        "name": "Example Name",
+        "affiliation": "Example Affiliation",
+      },
+    ],
+  "workflow":
+    {
+      "name": "trimming_and_qc",
+      "readme": "https://github.com/suecharo/gh-trs/blob/main/README.md",
+      "language": { "type": "CWL", "version": "v1.0" },
+      "files":
+        [
+          {
+            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/CWL/wf/fastqc.cwl",
+            "target": "fastqc.cwl",
+            "type": "secondary",
+          },
+          {
+            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/CWL/wf/trimming_and_qc.cwl",
+            "target": "trimming_and_qc.cwl",
+            "type": "primary",
+          },
+          {
+            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/CWL/wf/trimmomatic_pe.cwl",
+            "target": "trimmomatic_pe.cwl",
+            "type": "secondary",
+          },
+        ],
+      "testing":
+        [
+          {
+            "id": "test_1",
+            "files":
+              [
+                {
+                  "url": "https://github.com/suecharo/gh-trs/blob/main/tests/CWL/test/wf_params.json",
+                  "type": "wf_params",
+                },
+                {
+                  "url": "https://github.com/suecharo/gh-trs/blob/main/tests/CWL/test/ERR034597_1.small.fq.gz",
+                  "type": "other",
+                },
+                {
+                  "url": "https://github.com/suecharo/gh-trs/blob/main/tests/CWL/test/ERR034597_2.small.fq.gz",
+                  "type": "other",
+                },
+              ],
+          },
+        ],
+    },
+}

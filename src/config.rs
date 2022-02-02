@@ -63,7 +63,7 @@ pub enum LanguageType {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct File {
     pub url: Url,
-    pub target: PathBuf,
+    pub target: Option<PathBuf>,
     pub r#type: FileType,
 }
 
@@ -81,9 +81,13 @@ impl File {
         };
         Ok(Self {
             url: url.clone(),
-            target: target,
+            target: Some(target),
             r#type,
         })
+    }
+
+    pub fn is_primary(&self) -> bool {
+        self.r#type == FileType::Primary
     }
 }
 
@@ -131,7 +135,7 @@ impl Default for Testing {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TestFile {
     pub url: Url,
-    pub target: PathBuf,
+    pub target: Option<PathBuf>,
     pub r#type: TestFileType,
 }
 
@@ -149,7 +153,7 @@ impl TestFile {
         };
         Ok(Self {
             url: url.clone(),
-            target: target,
+            target: Some(target),
             r#type,
         })
     }

@@ -52,12 +52,12 @@ fn main() -> Result<()> {
         } => {
             info!("{} validate", "Running".green());
             match validate::validate(&config_file, &github_token) {
-                Ok(()) => info!("{} validate", "Success".green()),
+                Ok(_) => info!("{} validate", "Success".green()),
                 Err(e) => {
                     error!("{} validate with error: {}", "Failed".red(), e);
                     exit(1);
                 }
-            }
+            };
         }
         args::Args::Publish {
             config_file,

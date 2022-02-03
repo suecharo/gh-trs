@@ -1,7 +1,9 @@
 use crate::github_api;
+use crate::raw_url;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use url::Url;
 use uuid::Uuid;
@@ -89,6 +91,35 @@ impl File {
     pub fn is_primary(&self) -> bool {
         self.r#type == FileType::Primary
     }
+
+    /// If the URL's host is github.com and raw.github.com, update the URL to raw_url.
+    /// If it isn't these hosts, raise an error.
+    pub fn update_url(
+        &mut self,
+        gh_token: impl AsRef<str>,
+        branch_memo: Option<&mut HashMap<String, String>>,
+        commit_memo: Option<&mut HashMap<String, String>>,
+    ) -> Result<()> {
+        self.url = raw_url::RawUrl::new(gh_token, &self.url, branch_memo, commit_memo)
+            .with_context(|| format!("Failed to update URL: {} to raw URL", self.url.as_ref()))?
+            .to_url()?;
+        Ok(())
+    }
+
+    pub fn complement_target(&mut self) -> Result<()> {
+        if self.target.is_none() {
+            let target = self
+                .url
+                .path_segments()
+                .ok_or(anyhow!("Invalid URL: {}", self.url.as_ref()))?
+                .last()
+                .ok_or(anyhow!("Invalid URL: {}", self.url.as_ref()))?
+                .to_string()
+                .into();
+            self.target = Some(target);
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -156,6 +187,40 @@ impl TestFile {
             target: Some(target),
             r#type,
         })
+    }
+
+    /// If the URL's host is github.com and raw.github.com, update the URL to raw_url.
+    /// If it isn't these hosts, do nothing.
+    pub fn update_url(
+        &mut self,
+        gh_token: impl AsRef<str>,
+        branch_memo: Option<&mut HashMap<String, String>>,
+        commit_memo: Option<&mut HashMap<String, String>>,
+    ) -> Result<()> {
+        match raw_url::RawUrl::new(gh_token, &self.url, branch_memo, commit_memo) {
+            Ok(raw_url) => {
+                self.url = raw_url.to_url()?;
+            }
+            Err(_) => {
+                // do nothing.
+            }
+        };
+        Ok(())
+    }
+
+    pub fn complement_target(&mut self) -> Result<()> {
+        if self.target.is_none() {
+            let target = self
+                .url
+                .path_segments()
+                .ok_or(anyhow!("Invalid URL: {}", self.url.as_ref()))?
+                .last()
+                .ok_or(anyhow!("Invalid URL: {}", self.url.as_ref()))?
+                .to_string()
+                .into();
+            self.target = Some(target);
+        }
+        Ok(())
     }
 }
 

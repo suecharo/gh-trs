@@ -19,9 +19,9 @@ pub fn validate(
 
     info!("Validating config file: {}", config_file.as_ref().display());
     let reader = BufReader::new(fs::File::open(config_file)?);
-    let config: config::Config = serde_yaml::from_reader(reader)?;
+    let mut config: config::Config = serde_yaml::from_reader(reader)?;
     debug!("config:\n{:#?}", &config);
-    let config = validate_and_update_workflow(&gh_token, &config)?;
+    validate_and_update_workflow(&gh_token, &mut config)?;
     debug!("updated config:\n{:#?}", &config);
 
     Ok(config)
@@ -29,14 +29,12 @@ pub fn validate(
 
 fn validate_and_update_workflow(
     gh_token: &impl AsRef<str>,
-    config: &config::Config,
-) -> Result<config::Config> {
-    let mut cloned_config = config.clone();
-
+    config: &mut config::Config,
+) -> Result<()> {
     let mut branch_memo = HashMap::new();
     let mut commit_memo = HashMap::new();
 
-    cloned_config.workflow.readme = raw_url::RawUrl::new(
+    config.workflow.readme = raw_url::RawUrl::new(
         gh_token,
         &config.workflow.readme,
         Some(&mut branch_memo),
@@ -57,53 +55,25 @@ fn validate_and_update_workflow(
         primary_wf_count
     );
 
-    for i in 0..config.workflow.files.len() {
-        cloned_config.workflow.files[i] = config::File::new(
-            &raw_url::RawUrl::new(
-                gh_token,
-                &config.workflow.files[i].url,
-                Some(&mut branch_memo),
-                Some(&mut commit_memo),
-            )
-            .with_context(|| {
-                format!(
-                    "Failed to convert file {} to raw url",
-                    &config.workflow.files[i].url
-                )
-            })?
-            .to_url()?,
-            config.workflow.files[i].target.clone(),
-            config.workflow.files[i].r#type.clone(),
-        )?;
+    for file in &mut config.workflow.files {
+        file.update_url(gh_token, Some(&mut branch_memo), Some(&mut commit_memo))?;
+        file.complement_target()?;
     }
 
     let mut test_id_set: HashSet<&str> = HashSet::new();
-    for i in 0..config.workflow.testing.len() {
+    for testing in &mut config.workflow.testing {
         ensure!(
-            !test_id_set.contains(config.workflow.testing[i].id.as_str()),
+            !test_id_set.contains(testing.id.as_str()),
             "Duplicate test id: {}",
-            config.workflow.testing[i].id
+            testing.id.as_str()
         );
-        test_id_set.insert(config.workflow.testing[i].id.as_str());
+        test_id_set.insert(testing.id.as_str());
 
-        for j in 0..config.workflow.testing[i].files.len() {
-            match raw_url::RawUrl::new(
-                gh_token,
-                &config.workflow.testing[i].files[j].url,
-                Some(&mut branch_memo),
-                Some(&mut commit_memo),
-            ) {
-                Ok(raw_url) => {
-                    cloned_config.workflow.testing[i].files[j] = config::TestFile::new(
-                        &raw_url.to_url()?,
-                        config.workflow.testing[i].files[j].target.clone(),
-                        config.workflow.testing[i].files[j].r#type.clone(),
-                    )?
-                }
-                Err(_) => {}
-            };
+        for file in &mut testing.files {
+            file.update_url(gh_token, Some(&mut branch_memo), Some(&mut commit_memo))?;
+            file.complement_target()?;
         }
     }
 
-    Ok(cloned_config)
+    Ok(())
 }

@@ -66,8 +66,20 @@ fn main() -> Result<()> {
             branch,
             ..
         } => {
+            info!("{} validate", "Running".green());
+            let config = match validate::validate(&config_file, &github_token) {
+                Ok(config) => {
+                    info!("{} validate", "Success".green());
+                    config
+                }
+                Err(e) => {
+                    error!("{} validate with error: {}", "Failed".red(), e);
+                    exit(1);
+                }
+            };
+
             info!("{} publish", "Running".green());
-            match publish::publish(&config_file, &github_token, &repo, &branch) {
+            match publish::publish(&config, &github_token, &repo, &branch) {
                 Ok(()) => info!("{} publish", "Success".green()),
                 Err(e) => {
                     error!("{} publish with error: {}", "Failed".red(), e);

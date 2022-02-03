@@ -1,9 +1,22 @@
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Context, Result};
+use regex::Regex;
 use reqwest;
+use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use url::Url;
+
+pub fn parse_repo(repo: impl AsRef<str>) -> Result<(String, String)> {
+    let re = Regex::new(r"^[\w-]+/[\w-]+$")?;
+    ensure!(
+        re.is_match(repo.as_ref()),
+        "Invalid repository name: {}. It should be in the format of `owner/name`.",
+        repo.as_ref()
+    );
+    let parts = repo.as_ref().split("/").collect::<Vec<_>>();
+    Ok((parts[0].to_string(), parts[1].to_string()))
+}
 
 fn get_request(gh_token: impl AsRef<str>, url: &Url, query: &[(&str, &str)]) -> Result<Value> {
     let client = reqwest::blocking::Client::new();
@@ -35,7 +48,7 @@ fn get_request(gh_token: impl AsRef<str>, url: &Url, query: &[(&str, &str)]) -> 
     Ok(res_body)
 }
 
-fn post_request(gh_token: impl AsRef<str>, url: &Url) -> Result<Value> {
+fn post_request(gh_token: impl AsRef<str>, url: &Url, body: &Value) -> Result<Value> {
     let client = reqwest::blocking::Client::new();
     let response = client
         .post(url.as_str())
@@ -45,6 +58,7 @@ fn post_request(gh_token: impl AsRef<str>, url: &Url) -> Result<Value> {
             reqwest::header::AUTHORIZATION,
             format!("token {}", gh_token.as_ref()),
         )
+        .json(body)
         .send()?;
     let status = response.status();
     let res_body = response.json::<Value>()?;
@@ -65,7 +79,7 @@ fn post_request(gh_token: impl AsRef<str>, url: &Url) -> Result<Value> {
 }
 
 /// https://docs.github.com/ja/rest/reference/repos#get-a-repository
-fn get_repos(
+pub fn get_repos(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
@@ -91,7 +105,7 @@ pub fn get_default_branch(
             match memo.get(&key) {
                 Some(default_branch) => Ok(default_branch.to_string()),
                 None => {
-                    let res = get_repos(gh_token, owner, name)?;
+                    let res = get_repos(gh_token, owner, name).context("Failed to get repo")?;
                     let default_branch = res
                         .get("default_branch")
                         .ok_or(anyhow!(err_message))?
@@ -104,7 +118,7 @@ pub fn get_default_branch(
             }
         }
         None => {
-            let res = get_repos(gh_token, owner, name)?;
+            let res = get_repos(gh_token, owner, name).context("Failed to get repo")?;
             Ok(res
                 .get("default_branch")
                 .ok_or(anyhow!(err_message))?
@@ -120,7 +134,7 @@ pub fn get_license(
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
 ) -> Result<String> {
-    let res = get_repos(gh_token, owner, name)?;
+    let res = get_repos(gh_token, owner, name).context("Failed to get repo")?;
     let err_message = "Failed to parse the response when getting license";
     Ok(res
         .get("license")
@@ -162,7 +176,8 @@ pub fn get_latest_commit_hash(
             match memo.get(&key) {
                 Some(latest_commit_hash) => Ok(latest_commit_hash.to_string()),
                 None => {
-                    let res = get_branches(gh_token, owner, name, branch)?;
+                    let res = get_branches(gh_token, owner, name, branch)
+                        .context("Failed to get branch")?;
                     let latest_commit_hash = res
                         .get("commit")
                         .ok_or(anyhow!(err_message))?
@@ -177,7 +192,8 @@ pub fn get_latest_commit_hash(
             }
         }
         None => {
-            let res = get_branches(gh_token, owner, name, branch)?;
+            let res =
+                get_branches(gh_token, owner, name, branch).context("Failed to get branch")?;
             Ok(res
                 .get("commit")
                 .ok_or(anyhow!(err_message))?
@@ -197,7 +213,7 @@ fn get_user(gh_token: impl AsRef<str>) -> Result<Value> {
 }
 
 pub fn get_author_info(gh_token: impl AsRef<str>) -> Result<(String, String, String)> {
-    let res = get_user(gh_token)?;
+    let res = get_user(gh_token).context("Failed to get user")?;
     let err_message = "Failed to parse the response when getting author";
     let gh_account = res
         .get("login")
@@ -259,19 +275,20 @@ fn get_contents(
 }
 
 pub fn get_file_list_recursive(
-    github_token: impl AsRef<str>,
+    gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
     path: impl AsRef<Path>,
     commit: impl AsRef<str>,
 ) -> Result<Vec<PathBuf>> {
     let res = get_contents(
-        github_token.as_ref(),
+        gh_token.as_ref(),
         owner.as_ref(),
         name.as_ref(),
         path,
         commit.as_ref(),
-    )?;
+    )
+    .context("Failed to get contents")?;
     let err_message = "Failed to parse the response when getting file list.";
     match res.as_array() {
         Some(files) => {
@@ -292,7 +309,7 @@ pub fn get_file_list_recursive(
                     "file" => file_list.push(path),
                     "dir" => {
                         let mut sub_file_list = get_file_list_recursive(
-                            github_token.as_ref(),
+                            gh_token.as_ref(),
                             owner.as_ref(),
                             name.as_ref(),
                             path,
@@ -307,6 +324,104 @@ pub fn get_file_list_recursive(
         }
         None => bail!(err_message),
     }
+}
+
+pub fn exists_branch(
+    gh_token: impl AsRef<str>,
+    owner: impl AsRef<str>,
+    name: impl AsRef<str>,
+    branch: impl AsRef<str>,
+) -> Result<()> {
+    match get_branches(&gh_token, &owner, &name, &branch) {
+        Ok(_) => Ok(()),
+        Err(err) => bail!("Branch {} does not exist: {}", branch.as_ref(), err),
+    }
+}
+
+/// https://docs.github.com/en/rest/reference/git#get-a-reference
+fn get_ref(
+    gh_token: impl AsRef<str>,
+    owner: impl AsRef<str>,
+    name: impl AsRef<str>,
+    r#ref: impl AsRef<str>,
+) -> Result<Value> {
+    let url = Url::parse(&format!(
+        "https://api.github.com/repos/{}/{}/git/ref/{}",
+        owner.as_ref(),
+        name.as_ref(),
+        r#ref.as_ref()
+    ))?;
+    get_request(gh_token, &url, &[])
+}
+
+fn get_branch_sha(
+    gh_token: impl AsRef<str>,
+    owner: impl AsRef<str>,
+    name: impl AsRef<str>,
+    branch: impl AsRef<str>,
+) -> Result<String> {
+    let res = get_ref(
+        gh_token.as_ref(),
+        owner.as_ref(),
+        name.as_ref(),
+        format!("heads/{}", branch.as_ref()),
+    )
+    .context("Failed to get ref")?;
+    let err_message = "Failed to parse the response when getting branch sha.";
+    Ok(res
+        .get("object")
+        .ok_or(anyhow!(err_message))?
+        .get("sha")
+        .ok_or(anyhow!(err_message))?
+        .as_str()
+        .ok_or(anyhow!(err_message))?
+        .to_string())
+}
+
+/// https://docs.github.com/en/rest/reference/git#create-a-reference
+fn create_ref(
+    gh_token: impl AsRef<str>,
+    owner: impl AsRef<str>,
+    name: impl AsRef<str>,
+    r#ref: impl AsRef<str>,
+    sha: impl AsRef<str>,
+) -> Result<Value> {
+    let url = Url::parse(&format!(
+        "https://api.github.com/repos/{}/{}/git/refs",
+        owner.as_ref(),
+        name.as_ref(),
+    ))?;
+    let body = json!({
+        "ref": r#ref.as_ref(),
+        "sha": sha.as_ref(),
+    });
+    post_request(gh_token, &url, &body).context("Failed to create ref")
+}
+
+pub fn create_branch(
+    gh_token: impl AsRef<str>,
+    owner: impl AsRef<str>,
+    name: impl AsRef<str>,
+    branch: impl AsRef<str>,
+) -> Result<()> {
+    let default_branch = get_default_branch(
+        &gh_token,
+        &owner,
+        &name,
+        None::<&mut HashMap<String, String>>,
+    )
+    .context("Failed to get default branch")?;
+    let default_branch_sha = get_branch_sha(&gh_token, &owner, &name, &default_branch)
+        .context("Failed to get default branch sha")?;
+    create_ref(
+        &gh_token,
+        &owner,
+        &name,
+        format!("refs/heads/{}", branch.as_ref()),
+        &default_branch_sha,
+    )
+    .context("Failed to create branch")?;
+    Ok(())
 }
 
 #[cfg(test)]

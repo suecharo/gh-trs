@@ -8,6 +8,7 @@ mod make_template;
 mod publish;
 mod raw_url;
 mod remote;
+mod trs;
 mod validate;
 
 use anyhow::Result;

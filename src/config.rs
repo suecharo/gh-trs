@@ -20,7 +20,8 @@ pub struct Config {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Author {
     pub github_account: String,
-    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     pub affiliation: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub orcid: Option<String>,
@@ -28,10 +29,10 @@ pub struct Author {
 
 impl Author {
     pub fn new_from_api(gh_token: impl AsRef<str>) -> Result<Self> {
-        let (github_account, name, affiliation) = github_api::get_author_info(gh_token)?;
+        let (github_account, _, affiliation) = github_api::get_author_info(gh_token)?;
         Ok(Self {
             github_account,
-            name,
+            name: None::<String>,
             affiliation,
             orcid: None::<String>,
         })

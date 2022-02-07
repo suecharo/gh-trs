@@ -21,10 +21,38 @@ pub fn validate(
     let reader = BufReader::new(fs::File::open(config_file)?);
     let mut config: config::Config = serde_yaml::from_reader(reader)?;
     debug!("config:\n{:#?}", &config);
+    validate_authors(&config.authors)?;
+    validate_wf_name(&config.workflow.name)?;
     validate_and_update_workflow(&gh_token, &mut config)?;
     debug!("updated config:\n{:#?}", &config);
 
     Ok(config)
+}
+
+fn validate_authors(authors: &Vec<config::Author>) -> Result<()> {
+    ensure!(authors.len() > 0, "No authors found in config file");
+    ensure!(
+        authors.len()
+            == authors
+                .iter()
+                .map(|a| a.github_account.clone())
+                .collect::<HashSet<_>>()
+                .len(),
+        "Duplicate github accounts found in config file"
+    );
+    Ok(())
+}
+
+fn validate_wf_name(wf_name: impl AsRef<str>) -> Result<()> {
+    ensure!(
+        wf_name
+            .as_ref()
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_'),
+        "Workflow name must be alphanumeric or underscore: {}",
+        wf_name.as_ref()
+    );
+    Ok(())
 }
 
 fn validate_and_update_workflow(

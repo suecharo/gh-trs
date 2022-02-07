@@ -35,7 +35,12 @@ pub fn make_template(
     let wf_id = Uuid::new_v4();
     let wf_version = "1.0.0".to_string();
     let wf_license = github_api::get_license(&gh_token, &primary_wf.owner, &primary_wf.name)?;
-    let author = config::Author::new_from_api(&gh_token)?;
+    let author = config::Author {
+        github_account: config::Author::new_from_api(&gh_token)?.github_account,
+        name: None,
+        affiliation: None,
+        orcid: None,
+    };
     let wf_name = primary_wf.file_stem()?;
     let readme = raw_url::RawUrl::new(
         &gh_token,
@@ -93,7 +98,7 @@ fn obtain_wf_files(
             } else {
                 config::FileType::Secondary
             };
-            Ok(config::File::new(&url, Some(target), r#type)?)
+            Ok(config::File::new(&url, &Some(target), r#type)?)
         })
         .collect::<Result<Vec<_>>>()?)
 }

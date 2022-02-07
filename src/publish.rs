@@ -1,10 +1,10 @@
 use crate::config;
 use crate::env;
 use crate::github_api;
+use crate::trs_response;
 
 use anyhow::{anyhow, Result};
-use log::{info, warn};
-use std::path::Path;
+use log::info;
 
 #[cfg(not(tarpaulin_include))]
 pub fn publish(
@@ -34,6 +34,9 @@ pub fn publish(
             info!("Branch: {} created", branch.as_ref());
         }
     }
+
+    let _branch_sha = github_api::get_branch_sha(&gh_token, &owner, &name, branch.as_ref())?;
+    let _trs_response = trs_response::TrsResponse::new(&config, &owner, &name)?;
 
     Ok(())
 }

@@ -9,6 +9,8 @@ mod publish;
 mod raw_url;
 mod remote;
 mod trs;
+mod trs_api;
+mod trs_response;
 mod validate;
 
 use anyhow::Result;

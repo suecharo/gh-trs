@@ -296,9 +296,7 @@ mod tests {
             None::<&mut HashMap<String, String>>,
         )
         .unwrap_err();
-        assert!(err.to_string().contains(
-            "Failed to get request to https://api.github.com/repos/suecharo/gh-trs/branches/invalid_branch"
-        ));
+        assert!(err.to_string().contains("Failed to get branch"));
         Ok(())
     }
 

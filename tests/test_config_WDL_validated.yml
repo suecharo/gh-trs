@@ -1,0 +1,44 @@
+{
+  "id": "5446f0ab-f41b-4222-8032-8e705588cd8d",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "authors": [
+    {
+      "github_account": "suecharo",
+      "name": "Example Name",
+      "affiliation": "Example Affiliation"
+    }
+  ],
+  "workflow": {
+    "name": "dockstore-tool-bamstats",
+    "readme": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/README.md",
+    "language": {
+      "type": "WDL",
+      "version": "1.0"
+    },
+    "files": [
+      {
+        "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/WDL/wf/dockstore-tool-bamstats.wdl",
+        "target": "dockstore-tool-bamstats.wdl",
+        "type": "primary"
+      }
+    ],
+    "testing": [
+      {
+        "id": "test_1",
+        "files": [
+          {
+            "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/WDL/test/wf_params.json",
+            "target": "wf_params.json",
+            "type": "wf_params"
+          },
+          {
+            "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/WDL/test/tiny.bam",
+            "target": "tiny.bam",
+            "type": "other"
+          }
+        ]
+      }
+    ]
+  }
+}

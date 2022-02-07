@@ -22,18 +22,19 @@ pub struct Author {
     pub github_account: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    pub affiliation: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub affiliation: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub orcid: Option<String>,
 }
 
 impl Author {
     pub fn new_from_api(gh_token: impl AsRef<str>) -> Result<Self> {
-        let (github_account, _, affiliation) = github_api::get_author_info(gh_token)?;
+        let (github_account, name, affiliation) = github_api::get_author_info(gh_token)?;
         Ok(Self {
             github_account,
-            name: None::<String>,
-            affiliation,
+            name: Some(name),
+            affiliation: Some(affiliation),
             orcid: None::<String>,
         })
     }
@@ -71,7 +72,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(url: &Url, target: Option<impl AsRef<Path>>, r#type: FileType) -> Result<Self> {
+    pub fn new(url: &Url, target: &Option<impl AsRef<Path>>, r#type: FileType) -> Result<Self> {
         let target = match target {
             Some(target) => target.as_ref().to_path_buf(),
             None => url
@@ -143,19 +144,19 @@ impl Default for Testing {
             files: vec![
                 TestFile::new(
                     &Url::parse("https://example.com/path/to/wf_params.json").unwrap(),
-                    None::<PathBuf>,
+                    &None::<PathBuf>,
                     TestFileType::WfParams,
                 )
                 .unwrap(),
                 TestFile::new(
                     &Url::parse("https://example.com/path/to/wf_engine_params.json").unwrap(),
-                    None::<PathBuf>,
+                    &None::<PathBuf>,
                     TestFileType::WfEngineParams,
                 )
                 .unwrap(),
                 TestFile::new(
                     &Url::parse("https://example.com/path/to/data.fq").unwrap(),
-                    None::<PathBuf>,
+                    &None::<PathBuf>,
                     TestFileType::Other,
                 )
                 .unwrap(),
@@ -172,7 +173,7 @@ pub struct TestFile {
 }
 
 impl TestFile {
-    pub fn new(url: &Url, target: Option<impl AsRef<Path>>, r#type: TestFileType) -> Result<Self> {
+    pub fn new(url: &Url, target: &Option<impl AsRef<Path>>, r#type: TestFileType) -> Result<Self> {
         let target = match target {
             Some(target) => target.as_ref().to_path_buf(),
             None => url
@@ -241,8 +242,8 @@ mod tests {
     #[test]
     fn test_file_new() -> Result<()> {
         let url = Url::parse("https://example.com/path/to/file.txt")?;
-        let target = PathBuf::from("path/to/file.txt");
-        let file = File::new(&url, Some(&target), FileType::Primary)?;
+        let target = Some(PathBuf::from("path/to/file.txt"));
+        let file = File::new(&url, &target, FileType::Primary)?;
         assert_eq!(file.url, url);
         assert_eq!(file.target, target);
         assert_eq!(file.r#type, FileType::Primary);
@@ -252,9 +253,9 @@ mod tests {
     #[test]
     fn test_file_new_no_target() -> Result<()> {
         let url = Url::parse("https://example.com/path/to/file.txt")?;
-        let file = File::new(&url, None::<PathBuf>, FileType::Primary)?;
+        let file = File::new(&url, &None::<PathBuf>, FileType::Primary)?;
         assert_eq!(file.url, url);
-        assert_eq!(file.target, PathBuf::from("file.txt"));
+        assert_eq!(file.target, Some(PathBuf::from("file.txt")));
         assert_eq!(file.r#type, FileType::Primary);
         Ok(())
     }
@@ -270,8 +271,8 @@ mod tests {
     #[test]
     fn test_test_file_new() -> Result<()> {
         let url = Url::parse("https://example.com/path/to/file.txt")?;
-        let target = PathBuf::from("path/to/file.txt");
-        let file = TestFile::new(&url, Some(&target), TestFileType::WfParams)?;
+        let target = Some(PathBuf::from("path/to/file.txt"));
+        let file = TestFile::new(&url, &target, TestFileType::WfParams)?;
         assert_eq!(file.url, url);
         assert_eq!(file.target, target);
         assert_eq!(file.r#type, TestFileType::WfParams);
@@ -281,9 +282,9 @@ mod tests {
     #[test]
     fn test_test_file_no_target() -> Result<()> {
         let url = Url::parse("https://example.com/path/to/file.txt")?;
-        let file = TestFile::new(&url, None::<PathBuf>, TestFileType::WfParams)?;
+        let file = TestFile::new(&url, &None::<PathBuf>, TestFileType::WfParams)?;
         assert_eq!(file.url, url);
-        assert_eq!(file.target, PathBuf::from("file.txt"));
+        assert_eq!(file.target, Some(PathBuf::from("file.txt")));
         assert_eq!(file.r#type, TestFileType::WfParams);
         Ok(())
     }

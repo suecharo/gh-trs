@@ -354,7 +354,7 @@ fn get_ref(
     get_request(gh_token, &url, &[])
 }
 
-fn get_branch_sha(
+pub fn get_branch_sha(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,

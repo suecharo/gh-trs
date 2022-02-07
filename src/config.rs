@@ -3,6 +3,7 @@ use crate::raw_url;
 
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use url::Url;
@@ -17,14 +18,12 @@ pub struct Config {
     pub workflow: Workflow,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Author {
     pub github_account: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub affiliation: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub orcid: Option<String>,
 }
 

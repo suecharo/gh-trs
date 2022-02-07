@@ -137,3 +137,90 @@ fn generate_tools_id_versions_version_tests(
         })
         .collect::<Result<Vec<_>>>()?)
 }
+
+#[cfg(test)]
+#[cfg(not(tarpaulin_include))]
+mod tests {
+    use super::*;
+
+    use serde_json;
+    use serde_yaml;
+    use std::fs;
+    use std::io::BufReader;
+
+    #[test]
+    fn test_generate_tool_classes() -> Result<()> {
+        let tool_classes = generate_tool_classes("test_owner", "test_name")?;
+        let expect = serde_json::from_str::<Vec<trs::ToolClass>>(
+            r#"
+[
+  {
+    "id": "workflow",
+    "name": "Workflow",
+    "description": "A computational workflow"
+  }
+]"#,
+        )?;
+        assert_eq!(tool_classes, expect);
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_descriptor() -> Result<()> {
+        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
+        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let descriptor = generate_descriptor(&config)?;
+        let expect = serde_json::from_str::<trs::FileWrapper>(
+            r#"
+{
+  "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/trimming_and_qc.cwl"
+}"#,
+        )?;
+        assert_eq!(descriptor, expect);
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_tools_id_versions_version_files() -> Result<()> {
+        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
+        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let files = generate_tools_id_versions_version_files(&config)?;
+        let expect = serde_json::from_str::<Vec<trs::ToolFile>>(
+            r#"
+[
+  {
+    "path": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/fastqc.cwl",
+    "file_type": "SECONDARY_DESCRIPTOR"
+  },
+  {
+    "path": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/trimming_and_qc.cwl",
+    "file_type": "PRIMARY_DESCRIPTOR"
+  },
+  {
+    "path": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/trimmomatic_pe.cwl",
+    "file_type": "SECONDARY_DESCRIPTOR"
+  }
+]
+"#,
+        )?;
+        assert_eq!(files, expect);
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_tools_id_versions_version_tests() -> Result<()> {
+        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
+        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let tests = generate_tools_id_versions_version_tests(&config)?;
+        let expect = serde_json::from_str::<Vec<trs::FileWrapper>>(
+            r#"
+[
+  {
+    "content": "{\"id\":\"test_1\",\"files\":[{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/wf_params.json\",\"target\":\"wf_params.json\",\"type\":\"wf_params\"},{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/ERR034597_1.small.fq.gz\",\"target\":\"ERR034597_1.small.fq.gz\",\"type\":\"other\"},{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/ERR034597_2.small.fq.gz\",\"target\":\"ERR034597_2.small.fq.gz\",\"type\":\"other\"}]}"
+  }
+]"#,
+        )?;
+        assert_eq!(tests, expect);
+        Ok(())
+    }
+}

@@ -3,30 +3,38 @@ use crate::config;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use url::Url;
 use uuid::Uuid;
 
 /// https://raw.githubusercontent.com/ga4gh-discovery/ga4gh-service-info/v1.0.0/service-info.yaml#/paths/~1service-info
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServiceInfo {
     pub id: String,
     pub name: String,
     pub r#type: ServiceType,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub organization: Organization,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub contact_url: Option<Url>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub documentation_url: Option<Url>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "serialize_date_time")]
     pub created_at: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "serialize_date_time")]
     pub updated_at: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub environment: Option<String>,
     pub version: String,
+}
+
+fn serialize_date_time<S>(dt: &Option<DateTime<Utc>>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match dt {
+        Some(dt) => serializer.serialize_str(&format!("{}", dt.format("%Y-%m-%dT%H:%M:%SZ"))),
+        None => serializer.serialize_none(),
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -113,12 +121,16 @@ pub struct Checksum {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
 pub enum FileType {
+    #[serde(rename = "TEST_FILE")]
     TestFile,
+    #[serde(rename = "PRIMARY_DESCRIPTOR")]
     PrimaryDescriptor,
+    #[serde(rename = "SECONDARY_DESCRIPTOR")]
     SecondaryDescriptor,
+    #[serde(rename = "CONTAINERFILE")]
     Containerfile,
+    #[serde(rename = "OTHER")]
     Other,
 }
 
@@ -131,23 +143,19 @@ impl FileType {
     }
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ToolFile {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<Url>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub file_type: Option<FileType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub checksum: Option<Checksum>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ToolClass {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
 
@@ -161,23 +169,18 @@ impl Default for ToolClass {
     }
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Tool {
     pub url: Url,
     pub id: Uuid,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub aliases: Option<Vec<String>>,
     pub organization: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub tool_class: ToolClass,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<Url>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub meta_version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub has_checker: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub checker_url: Option<Url>,
     pub versions: Vec<ToolVersion>,
 }
@@ -228,31 +231,21 @@ impl Tool {
     }
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ToolVersion {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub author: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub url: Url,
     pub id: Uuid,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_production: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub images: Option<Vec<ImageData>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub descriptor_type: Option<Vec<DescriptorType>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub containerfile: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub meta_version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub verified: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub verified_source: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub signed: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub included_apps: Option<Vec<String>>,
 }
 
@@ -305,19 +298,14 @@ impl ToolVersion {
     }
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ImageData {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub registry_host: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub image_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub checksum: Option<Checksum>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub image_type: Option<ImageType>,
 }
 
@@ -365,13 +353,11 @@ enum DescriptorTypeWithPlain {
 }
 
 /// One of url or content is required.
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct FileWrapper {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>, // The content of the file itself. One of url or content is required.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub checksum: Option<Vec<Checksum>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<Url>,
 }
 
@@ -380,23 +366,165 @@ pub struct FileWrapper {
 mod tests {
     use super::*;
 
+    use serde_json;
     use serde_yaml;
     use std::fs;
     use std::io::BufReader;
 
     #[test]
-    fn test_new_or_update_service_info_with_none() -> Result<()> {
+    fn test_new_or_update_service_info() -> Result<()> {
         let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
         let config: config::Config = serde_yaml::from_reader(reader)?;
-        ServiceInfo::new_or_update(None, &config, "test_owner", "test_name")?;
+        let service_info = ServiceInfo::new_or_update(None, &config, "test_owner", "test_name")?;
+
+        let expect = serde_json::from_str::<ServiceInfo>(
+            r#"
+{
+  "id": "io.github.test_owner.test_name",
+  "name": "gh-trs test_owner/test_name",
+  "type": {
+    "group": "gh-trs",
+    "artifact": "gh-trs",
+    "version": "2.0.1"
+  },
+  "description": "The GA4GH TRS API generated by gh-trs (https://github.com/suecharo/gh-trs)",
+  "organization": {
+    "name": "suecharo",
+    "url": "https://github.com/suecharo"
+  },
+  "createdAt": "2022-02-07T14:05:57Z",
+  "updatedAt": "2022-02-07T14:05:57Z",
+  "version": "20220207140557"
+}"#,
+        )?;
+        assert_eq!(service_info.id, expect.id);
+        assert_eq!(service_info.name, expect.name);
+        assert_eq!(service_info.r#type, expect.r#type);
+        assert_eq!(service_info.description, expect.description);
+        assert_eq!(service_info.organization, expect.organization);
         Ok(())
     }
 
     #[test]
-    fn test_new_or_update_tool_version_with_none() -> Result<()> {
+    fn test_file_type_new_from_file_type() -> Result<()> {
+        let file_type = FileType::new_from_file_type(&config::FileType::Primary);
+        assert_eq!(file_type, FileType::PrimaryDescriptor);
+        let file_type = FileType::new_from_file_type(&config::FileType::Secondary);
+        assert_eq!(file_type, FileType::SecondaryDescriptor);
+        Ok(())
+    }
+
+    #[test]
+    fn test_default_tool_class() -> Result<()> {
+        let tool_class = ToolClass::default();
+        assert_eq!(tool_class.id, Some("workflow".to_string()));
+        assert_eq!(tool_class.name, Some("Workflow".to_string()));
+        assert_eq!(
+            tool_class.description,
+            Some("A computational workflow".to_string())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_tool_new() -> Result<()> {
         let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
         let config: config::Config = serde_yaml::from_reader(reader)?;
-        ToolVersion::new(&config, "test_owner", "test_name")?;
+        let tool = Tool::new(&config, "test_owner", "test_name")?;
+
+        let expect = serde_json::from_str::<Tool>(
+            r#"
+{
+  "url": "https://test_owner.github.io/test_name/tools/5ca05f9a-d98d-42ee-8057-02abbbb6011f",
+  "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
+  "organization": "suecharo",
+  "name": "trimming_and_qc",
+  "tool_class": {
+    "id": "workflow",
+    "name": "Workflow",
+    "description": "A computational workflow"
+  },
+  "description": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/README.md",
+  "versions": []
+}"#,
+        )?;
+        assert_eq!(tool, expect);
+        Ok(())
+    }
+
+    #[test]
+    fn test_tool_add_new_tool_version() -> Result<()> {
+        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
+        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let mut tool = Tool::new(&config, "test_owner", "test_name")?;
+        tool.add_new_tool_version(&config, "test_owner", "test_name")?;
+        assert_eq!(tool.versions.len(), 1);
+        tool.add_new_tool_version(&config, "test_owner", "test_name")?;
+        assert_eq!(tool.versions.len(), 1);
+
+        let expect = serde_json::from_str::<Tool>(
+            r#"
+{
+  "url": "https://test_owner.github.io/test_name/tools/5ca05f9a-d98d-42ee-8057-02abbbb6011f",
+  "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
+  "organization": "suecharo",
+  "name": "trimming_and_qc",
+  "tool_class": {
+    "id": "workflow",
+    "name": "Workflow",
+    "description": "A computational workflow"
+  },
+  "description": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/README.md",
+  "versions": [
+    {
+      "author": [
+        "suecharo"
+      ],
+      "name": "trimming_and_qc",
+      "url": "https://test_owner.github.io/test_name/tools/5ca05f9a-d98d-42ee-8057-02abbbb6011f/versions/1.0.0",
+      "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
+      "descriptor_type": [
+        "CWL"
+      ]
+    }
+  ]
+}"#,
+        )?;
+        assert_eq!(tool, expect);
+        Ok(())
+    }
+
+    #[test]
+    fn test_tool_version_new() -> Result<()> {
+        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
+        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let tool_version = ToolVersion::new(&config, "test_owner", "test_name")?;
+
+        let expect = serde_json::from_str::<ToolVersion>(
+            r#"
+{
+  "author": [
+    "suecharo"
+  ],
+  "name": "trimming_and_qc",
+  "url": "https://test_owner.github.io/test_name/tools/5ca05f9a-d98d-42ee-8057-02abbbb6011f/versions/1.0.0",
+  "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
+  "descriptor_type": [
+    "CWL"
+  ]
+}"#,
+        )?;
+        assert_eq!(tool_version, expect);
+        Ok(())
+    }
+
+    #[test]
+    fn test_tool_version_version() -> Result<()> {
+        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
+        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let tool_version = ToolVersion::new(&config, "test_owner", "test_name")?;
+        let version = tool_version.version();
+        assert_eq!(version, "1.0.0");
         Ok(())
     }
 }

@@ -69,7 +69,7 @@ impl RawUrl {
             }
             Err(_) => {
                 let branch = branch_or_commit.to_string();
-                let commit = github_api::get_latest_commit_hash(
+                let commit = github_api::get_latest_commit_sha(
                     gh_token,
                     &owner,
                     &name,

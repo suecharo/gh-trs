@@ -9,11 +9,12 @@ use std::path::{Path, PathBuf};
 use url::Url;
 use uuid::Uuid;
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub id: Uuid,
     pub version: String,
-    pub license: String,
+    pub license: Option<String>,
     pub authors: Vec<Author>,
     pub workflow: Workflow,
 }

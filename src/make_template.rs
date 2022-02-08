@@ -34,7 +34,7 @@ pub fn make_template(
 
     let wf_id = Uuid::new_v4();
     let wf_version = "1.0.0".to_string();
-    let wf_license = github_api::get_license(&gh_token, &primary_wf.owner, &primary_wf.name)?;
+    // let wf_license = github_api::get_license(&gh_token, &primary_wf.owner, &primary_wf.name)?;
     let author = config::Author {
         github_account: config::Author::new_from_api(&gh_token)?.github_account,
         name: None,
@@ -56,7 +56,7 @@ pub fn make_template(
     let config = config::Config {
         id: wf_id,
         version: wf_version,
-        license: wf_license,
+        license: None,
         authors: vec![author],
         workflow: config::Workflow {
             name: wf_name,

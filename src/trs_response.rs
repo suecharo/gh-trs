@@ -6,6 +6,8 @@ use crate::trs_api;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TrsResponse {
@@ -82,6 +84,65 @@ impl TrsResponse {
             tools_id_versions_version_tests,
             tools_id_versions_version_containerfile: vec![],
         })
+    }
+
+    pub fn generate_contents(&self) -> Result<HashMap<PathBuf, String>> {
+        let id = self.tools_id.id.clone();
+        let version = self.tools_id_versions_version.version().clone();
+        let mut map: HashMap<PathBuf, String> = HashMap::new();
+        map.insert(
+            PathBuf::from("service-info/index.json"),
+            serde_json::to_string(&self.service_info)?,
+        );
+        map.insert(
+            PathBuf::from("toolClasses/index.json"),
+            serde_json::to_string(&self.tool_classes)?,
+        );
+        map.insert(
+            PathBuf::from("tools/index.json"),
+            serde_json::to_string(&self.tools)?,
+        );
+        map.insert(
+            PathBuf::from(format!("tools/{}/index.json", id)),
+            serde_json::to_string(&self.tools_id)?,
+        );
+        map.insert(
+            PathBuf::from(format!("tools/{}/versions/index.json", id)),
+            serde_json::to_string(&self.tools_id_versions)?,
+        );
+        map.insert(
+            PathBuf::from(format!("tools/{}/versions/{}/index.json", id, version)),
+            serde_json::to_string(&self.tools_id_versions_version)?,
+        );
+        map.insert(
+            PathBuf::from(format!(
+                "tools/{}/versions/{}/descriptor/index.json",
+                id, version
+            )),
+            serde_json::to_string(&self.tools_id_versions_version_descriptor)?,
+        );
+        map.insert(
+            PathBuf::from(format!(
+                "tools/{}/versions/{}/files/index.json",
+                id, version
+            )),
+            serde_json::to_string(&self.tools_id_versions_version_files)?,
+        );
+        map.insert(
+            PathBuf::from(format!(
+                "tools/{}/versions/{}/tests/index.json",
+                id, version
+            )),
+            serde_json::to_string(&self.tools_id_versions_version_tests)?,
+        );
+        map.insert(
+            PathBuf::from(format!(
+                "tools/{}/versions/{}/containerfile/index.json",
+                id, version
+            )),
+            serde_json::to_string(&self.tools_id_versions_version_containerfile)?,
+        );
+        Ok(map)
     }
 }
 

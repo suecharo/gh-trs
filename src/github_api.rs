@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, ensure, Context, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use regex::Regex;
 use reqwest;
 use serde_json::json;
@@ -78,6 +78,36 @@ fn post_request(gh_token: impl AsRef<str>, url: &Url, body: &Value) -> Result<Va
     Ok(res_body)
 }
 
+fn patch_request(gh_token: impl AsRef<str>, url: &Url, body: &Value) -> Result<Value> {
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .patch(url.as_str())
+        .header(reqwest::header::USER_AGENT, "gh-trs")
+        .header(reqwest::header::ACCEPT, "application/vnd.github.v3+json")
+        .header(
+            reqwest::header::AUTHORIZATION,
+            format!("token {}", gh_token.as_ref()),
+        )
+        .json(body)
+        .send()?;
+    let status = response.status();
+    let res_body = response.json::<Value>()?;
+    ensure!(
+        status != reqwest::StatusCode::UNAUTHORIZED,
+        "Failed to authenticate with GitHub. Please check your GitHub token."
+    );
+    ensure!(
+        status.is_success(),
+        "Failed to patch request to {}. Response: {}",
+        url,
+        match res_body.get("message") {
+            Some(message) => message.as_str().unwrap_or_else(|| status.as_str()),
+            None => status.as_str(),
+        }
+    );
+    Ok(res_body)
+}
+
 /// https://docs.github.com/ja/rest/reference/repos#get-a-repository
 pub fn get_repos(
     gh_token: impl AsRef<str>,
@@ -105,7 +135,7 @@ pub fn get_default_branch(
             match memo.get(&key) {
                 Some(default_branch) => Ok(default_branch.to_string()),
                 None => {
-                    let res = get_repos(gh_token, owner, name).context("Failed to get repo")?;
+                    let res = get_repos(gh_token, owner, name)?;
                     let default_branch = res
                         .get("default_branch")
                         .ok_or(anyhow!(err_message))?
@@ -118,7 +148,7 @@ pub fn get_default_branch(
             }
         }
         None => {
-            let res = get_repos(gh_token, owner, name).context("Failed to get repo")?;
+            let res = get_repos(gh_token, owner, name)?;
             Ok(res
                 .get("default_branch")
                 .ok_or(anyhow!(err_message))?
@@ -129,55 +159,42 @@ pub fn get_default_branch(
     }
 }
 
-pub fn get_license(
-    gh_token: impl AsRef<str>,
-    owner: impl AsRef<str>,
-    name: impl AsRef<str>,
-) -> Result<String> {
-    let res = get_repos(gh_token, owner, name).context("Failed to get repo")?;
-    let err_message = "Failed to parse the response when getting license";
-    Ok(res
-        .get("license")
-        .ok_or(anyhow!(err_message))?
-        .get("spdx_id")
-        .ok_or(anyhow!(err_message))?
-        .as_str()
-        .ok_or(anyhow!(err_message))?
-        .to_string())
-}
-
 /// https://docs.github.com/ja/rest/reference/branches#get-a-branch
 fn get_branches(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
-    branch: impl AsRef<str>,
+    branch_name: impl AsRef<str>,
 ) -> Result<Value> {
     let url = Url::parse(&format!(
         "https://api.github.com/repos/{}/{}/branches/{}",
         owner.as_ref(),
         name.as_ref(),
-        branch.as_ref()
+        branch_name.as_ref()
     ))?;
     get_request(gh_token, &url, &[])
 }
 
-pub fn get_latest_commit_hash(
+pub fn get_latest_commit_sha(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
-    branch: impl AsRef<str>,
+    branch_name: impl AsRef<str>,
     memo: Option<&mut HashMap<String, String>>,
 ) -> Result<String> {
-    let err_message = "Failed to parse the response when getting latest commit hash";
+    let err_message = "Failed to parse the response when getting latest commit sha";
     match memo {
         Some(memo) => {
-            let key = format!("{}/{}/{}", owner.as_ref(), name.as_ref(), branch.as_ref());
+            let key = format!(
+                "{}/{}/{}",
+                owner.as_ref(),
+                name.as_ref(),
+                branch_name.as_ref()
+            );
             match memo.get(&key) {
                 Some(latest_commit_hash) => Ok(latest_commit_hash.to_string()),
                 None => {
-                    let res = get_branches(gh_token, owner, name, branch)
-                        .context("Failed to get branch")?;
+                    let res = get_branches(gh_token, owner, name, branch_name)?;
                     let latest_commit_hash = res
                         .get("commit")
                         .ok_or(anyhow!(err_message))?
@@ -192,8 +209,7 @@ pub fn get_latest_commit_hash(
             }
         }
         None => {
-            let res =
-                get_branches(gh_token, owner, name, branch).context("Failed to get branch")?;
+            let res = get_branches(gh_token, owner, name, branch_name)?;
             Ok(res
                 .get("commit")
                 .ok_or(anyhow!(err_message))?
@@ -213,7 +229,7 @@ fn get_user(gh_token: impl AsRef<str>) -> Result<Value> {
 }
 
 pub fn get_author_info(gh_token: impl AsRef<str>) -> Result<(String, String, String)> {
-    let res = get_user(gh_token).context("Failed to get user")?;
+    let res = get_user(gh_token)?;
     let err_message = "Failed to parse the response when getting author";
     let gh_account = res
         .get("login")
@@ -287,8 +303,7 @@ pub fn get_file_list_recursive(
         name.as_ref(),
         path,
         commit.as_ref(),
-    )
-    .context("Failed to get contents")?;
+    )?;
     let err_message = "Failed to parse the response when getting file list.";
     match res.as_array() {
         Some(files) => {
@@ -330,11 +345,11 @@ pub fn exists_branch(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
-    branch: impl AsRef<str>,
+    branch_name: impl AsRef<str>,
 ) -> Result<()> {
-    match get_branches(&gh_token, &owner, &name, &branch) {
+    match get_branches(&gh_token, &owner, &name, &branch_name) {
         Ok(_) => Ok(()),
-        Err(err) => bail!("Branch {} does not exist: {}", branch.as_ref(), err),
+        Err(err) => bail!("Branch {} does not exist: {}", branch_name.as_ref(), err),
     }
 }
 
@@ -358,15 +373,14 @@ pub fn get_branch_sha(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
-    branch: impl AsRef<str>,
+    branch_name: impl AsRef<str>,
 ) -> Result<String> {
     let res = get_ref(
         gh_token.as_ref(),
         owner.as_ref(),
         name.as_ref(),
-        format!("heads/{}", branch.as_ref()),
-    )
-    .context("Failed to get ref")?;
+        format!("heads/{}", branch_name.as_ref()),
+    )?;
     let err_message = "Failed to parse the response when getting branch sha.";
     Ok(res
         .get("object")
@@ -395,33 +409,168 @@ fn create_ref(
         "ref": r#ref.as_ref(),
         "sha": sha.as_ref(),
     });
-    post_request(gh_token, &url, &body).context("Failed to create ref")
+    post_request(gh_token, &url, &body)
 }
 
+/// https://docs.github.com/en/rest/reference/git#update-a-reference
+pub fn update_ref(
+    gh_token: impl AsRef<str>,
+    owner: impl AsRef<str>,
+    name: impl AsRef<str>,
+    branch_name: impl AsRef<str>,
+    sha: impl AsRef<str>,
+) -> Result<()> {
+    let url = Url::parse(&format!(
+        "https://api.github.com/repos/{}/{}/git/refs/heads/{}",
+        owner.as_ref(),
+        name.as_ref(),
+        branch_name.as_ref()
+    ))?;
+    let body = json!({
+        "sha": sha.as_ref(),
+    });
+    patch_request(gh_token, &url, &body)?;
+    Ok(())
+}
+
+#[allow(dead_code)]
 pub fn create_branch(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
-    branch: impl AsRef<str>,
+    branch_name: impl AsRef<str>,
 ) -> Result<()> {
     let default_branch = get_default_branch(
         &gh_token,
         &owner,
         &name,
         None::<&mut HashMap<String, String>>,
-    )
-    .context("Failed to get default branch")?;
-    let default_branch_sha = get_branch_sha(&gh_token, &owner, &name, &default_branch)
-        .context("Failed to get default branch sha")?;
+    )?;
+    let default_branch_sha = get_branch_sha(&gh_token, &owner, &name, &default_branch)?;
     create_ref(
         &gh_token,
         &owner,
         &name,
-        format!("refs/heads/{}", branch.as_ref()),
+        format!("refs/heads/{}", branch_name.as_ref()),
         &default_branch_sha,
-    )
-    .context("Failed to create branch")?;
+    )?;
     Ok(())
+}
+
+pub fn create_empty_branch(
+    gh_token: impl AsRef<str>,
+    owner: impl AsRef<str>,
+    name: impl AsRef<str>,
+    branch_name: impl AsRef<str>,
+) -> Result<()> {
+    let mut empty_contents: HashMap<PathBuf, String> = HashMap::new();
+    empty_contents.insert(
+        PathBuf::from("README.md"),
+        "# TRS responses generated by gh-trs".to_string(),
+    );
+    let empty_tree_sha = create_tree(&gh_token, &owner, &name, None::<String>, empty_contents)?;
+    let empty_commit_sha = create_commit(
+        &gh_token,
+        &owner,
+        &name,
+        None::<String>,
+        &empty_tree_sha,
+        "Initial commit",
+    )?;
+    create_ref(
+        &gh_token,
+        &owner,
+        &name,
+        format!("refs/heads/{}", branch_name.as_ref()),
+        &empty_commit_sha,
+    )?;
+    Ok(())
+}
+
+/// https://docs.github.com/en/rest/reference/git#create-a-tree
+pub fn create_tree(
+    gh_token: impl AsRef<str>,
+    owner: impl AsRef<str>,
+    name: impl AsRef<str>,
+    base_tree: Option<impl AsRef<str>>,
+    contents: HashMap<PathBuf, String>,
+) -> Result<String> {
+    let url = Url::parse(&format!(
+        "https://api.github.com/repos/{}/{}/git/trees",
+        owner.as_ref(),
+        name.as_ref(),
+    ))?;
+    let tree = contents
+        .iter()
+        .map(|(path, content)| {
+            json!({
+                "path": path.to_string_lossy().to_string(),
+                "mode": "100644",
+                "type": "blob",
+                "content": content.as_str(),
+            })
+        })
+        .collect::<Vec<_>>();
+    let body = match base_tree {
+        Some(base_tree) => {
+            json!({
+                "base_tree": base_tree.as_ref(),
+                "tree": tree,
+            })
+        }
+        None => {
+            json!({
+                "tree": tree,
+            })
+        }
+    };
+    let res = post_request(gh_token, &url, &body)?;
+    let err_message = "Failed to parse the response when creating tree.";
+    Ok(res
+        .get("sha")
+        .ok_or(anyhow!(err_message))?
+        .as_str()
+        .ok_or(anyhow!(err_message))?
+        .to_string())
+}
+
+/// https://docs.github.com/ja/rest/reference/git#create-a-commit
+pub fn create_commit(
+    gh_token: impl AsRef<str>,
+    owner: impl AsRef<str>,
+    name: impl AsRef<str>,
+    parent: Option<impl AsRef<str>>,
+    tree_sha: impl AsRef<str>,
+    message: impl AsRef<str>,
+) -> Result<String> {
+    let url = Url::parse(&format!(
+        "https://api.github.com/repos/{}/{}/git/commits",
+        owner.as_ref(),
+        name.as_ref(),
+    ))?;
+    let body = match parent {
+        Some(parent) => {
+            json!({
+                "tree": tree_sha.as_ref(),
+                "parents": [parent.as_ref()],
+                "message": message.as_ref(),
+            })
+        }
+        None => {
+            json!({
+                "tree": tree_sha.as_ref(),
+                "message": message.as_ref(),
+            })
+        }
+    };
+    let res = post_request(gh_token, &url, &body)?;
+    let err_message = "Failed to parse the response when creating commit.";
+    Ok(res
+        .get("sha")
+        .ok_or(anyhow!(err_message))?
+        .as_str()
+        .ok_or(anyhow!(err_message))?
+        .to_string())
 }
 
 #[cfg(test)]
@@ -453,9 +602,9 @@ mod tests {
     }
 
     #[test]
-    fn test_get_latest_commit_hash() -> Result<()> {
+    fn test_get_latest_commit_sha() -> Result<()> {
         let gh_token = env::github_token(&None::<String>)?;
-        get_latest_commit_hash(
+        get_latest_commit_sha(
             &gh_token,
             "suecharo",
             "gh-trs",
@@ -466,11 +615,11 @@ mod tests {
     }
 
     #[test]
-    fn test_get_latest_commit_hash_with_memo() -> Result<()> {
+    fn test_get_latest_commit_sha_with_memo() -> Result<()> {
         let gh_token = env::github_token(&None::<String>)?;
         let mut memo = HashMap::new();
-        get_latest_commit_hash(&gh_token, "suecharo", "gh-trs", "main", Some(&mut memo))?;
-        get_latest_commit_hash(&gh_token, "suecharo", "gh-trs", "main", Some(&mut memo))?;
+        get_latest_commit_sha(&gh_token, "suecharo", "gh-trs", "main", Some(&mut memo))?;
+        get_latest_commit_sha(&gh_token, "suecharo", "gh-trs", "main", Some(&mut memo))?;
         Ok(())
     }
 
@@ -508,14 +657,6 @@ mod tests {
         let gh_token = env::github_token(&None::<String>)?;
         let file_list = get_file_list_recursive(&gh_token, "suecharo", "gh-trs", "src", "main")?;
         assert!(file_list.contains(&PathBuf::from("src/main.rs")));
-        Ok(())
-    }
-
-    #[test]
-    fn test_get_license() -> Result<()> {
-        let gh_token = env::github_token(&None::<String>)?;
-        let license = get_license(&gh_token, "suecharo", "gh-trs")?;
-        assert_eq!(license, "Apache-2.0".to_string());
         Ok(())
     }
 }

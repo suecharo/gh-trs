@@ -48,8 +48,8 @@ fn validate_wf_name(wf_name: impl AsRef<str>) -> Result<()> {
         wf_name
             .as_ref()
             .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_'),
-        "Workflow name must be alphanumeric or underscore: {}",
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == ' '),
+        "Workflow name must be alphanumeric or contain _, -, or space: {}",
         wf_name.as_ref()
     );
     Ok(())

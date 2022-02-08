@@ -8,7 +8,7 @@ fn get_request(url: &Url) -> Result<String> {
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(url.as_str())
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .header(reqwest::header::ACCEPT, "application/json")
         .send()?;
     let status = response.status();
     ensure!(

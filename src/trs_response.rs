@@ -1,10 +1,13 @@
 use crate::config;
+use crate::remote;
 use crate::trs;
 use crate::trs_api;
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use serde_json;
 
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TrsResponse {
     pub service_info: trs::ServiceInfo,
     pub tool_classes: Vec<trs::ToolClass>,
@@ -32,7 +35,10 @@ impl TrsResponse {
         )?;
         let tool_classes = generate_tool_classes(owner.as_ref(), name.as_ref())?;
 
-        let mut tools = trs_api::get_tools(&owner, &name)?;
+        let mut tools = match trs_api::get_tools(&owner, &name) {
+            Ok(tools) => tools,
+            Err(_) => vec![],
+        };
         let tools_id = match tools.iter().find(|t| t.id == config.id) {
             Some(tool) => {
                 // update tool
@@ -101,9 +107,16 @@ fn generate_descriptor(config: &config::Config) -> Result<trs::FileWrapper> {
         .iter()
         .find(|f| f.is_primary())
         .unwrap(); // already validated
+    let (content, checksum) = match remote::fetch_raw_content(&primary_wf.url) {
+        Ok(content) => {
+            let checksum = trs::Checksum::new_from_string(content.clone());
+            (Some(content), Some(vec![checksum]))
+        }
+        Err(_) => (None, None),
+    };
     Ok(trs::FileWrapper {
-        content: None,
-        checksum: None,
+        content,
+        checksum,
         url: Some(primary_wf.url.clone()),
     })
 }
@@ -113,10 +126,16 @@ fn generate_tools_id_versions_version_files(config: &config::Config) -> Result<V
         .workflow
         .files
         .iter()
-        .map(|f| trs::ToolFile {
-            path: Some(f.url.clone()),
-            file_type: Some(trs::FileType::new_from_file_type(&f.r#type)),
-            checksum: None,
+        .map(|f| {
+            let checksum = match trs::Checksum::new_from_url(&f.url) {
+                Ok(checksum) => Some(checksum),
+                Err(_) => None,
+            };
+            trs::ToolFile {
+                path: Some(f.url.clone()),
+                file_type: Some(trs::FileType::new_from_file_type(&f.r#type)),
+                checksum,
+            }
         })
         .collect())
 }
@@ -129,9 +148,10 @@ fn generate_tools_id_versions_version_tests(
         .testing
         .iter()
         .map(|t| {
+            let test_str = serde_json::to_string(&t)?;
             Ok(trs::FileWrapper {
-                content: Some(serde_json::to_string(&t)?),
-                checksum: None,
+                content: Some(test_str.clone()),
+                checksum: Some(vec![trs::Checksum::new_from_string(test_str)]),
                 url: None,
             })
         })
@@ -147,6 +167,15 @@ mod tests {
     use serde_yaml;
     use std::fs;
     use std::io::BufReader;
+
+    #[test]
+    fn test_trs_response_new() -> Result<()> {
+        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
+        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let trs_response = TrsResponse::new(&config, "test_owner", "test_name")?;
+        println!("{}", serde_json::to_string_pretty(&trs_response)?);
+        Ok(())
+    }
 
     #[test]
     fn test_generate_tool_classes() -> Result<()> {
@@ -169,14 +198,7 @@ mod tests {
     fn test_generate_descriptor() -> Result<()> {
         let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
         let config: config::Config = serde_yaml::from_reader(reader)?;
-        let descriptor = generate_descriptor(&config)?;
-        let expect = serde_json::from_str::<trs::FileWrapper>(
-            r#"
-{
-  "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/trimming_and_qc.cwl"
-}"#,
-        )?;
-        assert_eq!(descriptor, expect);
+        generate_descriptor(&config)?;
         Ok(())
     }
 
@@ -190,15 +212,27 @@ mod tests {
 [
   {
     "path": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/fastqc.cwl",
-    "file_type": "SECONDARY_DESCRIPTOR"
+    "file_type": "SECONDARY_DESCRIPTOR",
+    "checksum": {
+      "checksum": "1bd771a51336a782b695db8334872e00f305cd7c49c4978e7e58786ea4714437",
+      "type": "sha256"
+    }
   },
   {
     "path": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/trimming_and_qc.cwl",
-    "file_type": "PRIMARY_DESCRIPTOR"
+    "file_type": "PRIMARY_DESCRIPTOR",
+    "checksum": {
+      "checksum": "33ef70b2d5ee38cb394c5ca6354243f44a85118271026eb9fc61365a703e730b",
+      "type": "sha256"
+    }
   },
   {
     "path": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/trimmomatic_pe.cwl",
-    "file_type": "SECONDARY_DESCRIPTOR"
+    "file_type": "SECONDARY_DESCRIPTOR",
+    "checksum": {
+      "checksum": "531d0a38116347cade971c211056334f7cae48e1293e2bb0e334894e55636f8e",
+      "type": "sha256"
+    }
   }
 ]
 "#,
@@ -216,9 +250,16 @@ mod tests {
             r#"
 [
   {
-    "content": "{\"id\":\"test_1\",\"files\":[{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/wf_params.json\",\"target\":\"wf_params.json\",\"type\":\"wf_params\"},{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/ERR034597_1.small.fq.gz\",\"target\":\"ERR034597_1.small.fq.gz\",\"type\":\"other\"},{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/ERR034597_2.small.fq.gz\",\"target\":\"ERR034597_2.small.fq.gz\",\"type\":\"other\"}]}"
+    "content": "{\"id\":\"test_1\",\"files\":[{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/wf_params.json\",\"target\":\"wf_params.json\",\"type\":\"wf_params\"},{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/ERR034597_1.small.fq.gz\",\"target\":\"ERR034597_1.small.fq.gz\",\"type\":\"other\"},{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/ERR034597_2.small.fq.gz\",\"target\":\"ERR034597_2.small.fq.gz\",\"type\":\"other\"}]}",
+    "checksum": [
+      {
+        "checksum": "89d3af294e5168a27b3c281516e0586db9fb0c0485e49737fb648f9de1165f2f",
+        "type": "sha256"
+      }
+    ]
   }
-]"#,
+]
+"#,
         )?;
         assert_eq!(tests, expect);
         Ok(())

@@ -1,9 +1,10 @@
 use crate::config;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use sha2::{Digest, Sha256};
 use url::Url;
 use uuid::Uuid;
 
@@ -118,6 +119,35 @@ impl ServiceInfo {
 pub struct Checksum {
     pub checksum: String,
     pub r#type: String,
+}
+
+impl Checksum {
+    pub fn new_from_string(s: impl AsRef<str>) -> Self {
+        let mut hasher = Sha256::new();
+        hasher.update(s.as_ref().as_bytes());
+        let checksum = format!("{:x}", hasher.finalize());
+        Self {
+            checksum,
+            r#type: "sha256".to_string(),
+        }
+    }
+
+    pub fn new_from_url(url: &Url) -> Result<Self> {
+        let res = reqwest::blocking::get(url.as_str())?;
+        ensure!(
+            res.status().is_success(),
+            "Failed to get {} with status {}",
+            url,
+            res.status()
+        );
+        let mut hasher = Sha256::new();
+        hasher.update(res.bytes()?);
+        let checksum = format!("{:x}", hasher.finalize());
+        Ok(Self {
+            checksum,
+            r#type: "sha256".to_string(),
+        })
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]

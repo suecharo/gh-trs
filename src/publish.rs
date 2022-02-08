@@ -39,7 +39,8 @@ pub fn publish(
     let latest_commit_sha =
         github_api::get_latest_commit_sha(&gh_token, &owner, &name, branch.as_ref(), None)?;
     let trs_response = trs_response::TrsResponse::new(&config, &owner, &name)?;
-    let trs_contents = trs_response.generate_contents()?;
+    let trs_contents = trs_response
+        .generate_contents(config.workflow.language.r#type.clone().unwrap().to_string())?;
     let new_tree_sha =
         github_api::create_tree(&gh_token, &owner, &name, Some(&branch_sha), trs_contents)?;
     let new_commit_sha = github_api::create_commit(

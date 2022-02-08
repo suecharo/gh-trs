@@ -86,7 +86,10 @@ impl TrsResponse {
         })
     }
 
-    pub fn generate_contents(&self) -> Result<HashMap<PathBuf, String>> {
+    pub fn generate_contents(
+        &self,
+        descriptor_type: impl AsRef<str>,
+    ) -> Result<HashMap<PathBuf, String>> {
         let id = self.tools_id.id.clone();
         let version = self.tools_id_versions_version.version().clone();
         let mut map: HashMap<PathBuf, String> = HashMap::new();
@@ -116,22 +119,28 @@ impl TrsResponse {
         );
         map.insert(
             PathBuf::from(format!(
-                "tools/{}/versions/{}/descriptor/index.json",
-                id, version
+                "tools/{}/versions/{}/{}/descriptor/index.json",
+                id,
+                version,
+                descriptor_type.as_ref()
             )),
             serde_json::to_string(&self.tools_id_versions_version_descriptor)?,
         );
         map.insert(
             PathBuf::from(format!(
-                "tools/{}/versions/{}/files/index.json",
-                id, version
+                "tools/{}/versions/{}/{}/files/index.json",
+                id,
+                version,
+                descriptor_type.as_ref()
             )),
             serde_json::to_string(&self.tools_id_versions_version_files)?,
         );
         map.insert(
             PathBuf::from(format!(
-                "tools/{}/versions/{}/tests/index.json",
-                id, version
+                "tools/{}/versions/{}/{}/tests/index.json",
+                id,
+                version,
+                descriptor_type.as_ref()
             )),
             serde_json::to_string(&self.tools_id_versions_version_tests)?,
         );

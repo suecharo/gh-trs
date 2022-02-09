@@ -1,5 +1,6 @@
 use crate::github_api;
 use crate::raw_url;
+use crate::remote;
 
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
@@ -48,6 +49,18 @@ pub struct Workflow {
     pub language: Language,
     pub files: Vec<File>,
     pub testing: Vec<Testing>,
+}
+
+impl Workflow {
+    pub fn primary_wf_url(&self) -> Result<Url> {
+        Ok(self
+            .files
+            .iter()
+            .find(|f| f.is_primary())
+            .ok_or(anyhow!("No primary workflow file"))?
+            .url
+            .clone())
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -173,6 +186,30 @@ impl Default for Testing {
                 )
                 .unwrap(),
             ],
+        }
+    }
+}
+
+impl Testing {
+    pub fn wf_params(&self) -> Result<String> {
+        match self
+            .files
+            .iter()
+            .find(|f| f.r#type == TestFileType::WfParams)
+        {
+            Some(f) => remote::fetch_raw_content(&f.url),
+            None => Ok("{}".to_string()),
+        }
+    }
+
+    pub fn wf_engine_params(&self) -> Result<String> {
+        match self
+            .files
+            .iter()
+            .find(|f| f.r#type == TestFileType::WfEngineParams)
+        {
+            Some(f) => remote::fetch_raw_content(&f.url),
+            None => Ok("{}".to_string()),
         }
     }
 }

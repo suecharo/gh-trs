@@ -19,6 +19,7 @@ pub fn validate(
     debug!("config:\n{:#?}", &config);
 
     validate_authors(&config.authors)?;
+    validate_language(&config.workflow.language)?;
     validate_wf_name(&config.workflow.name)?;
     validate_and_update_workflow(&gh_token, &mut config)?;
 
@@ -37,6 +38,18 @@ fn validate_authors(authors: &Vec<config::Author>) -> Result<()> {
                 .collect::<HashSet<_>>()
                 .len(),
         "Duplicate github accounts found in config file"
+    );
+    Ok(())
+}
+
+fn validate_language(language: &config::Language) -> Result<()> {
+    ensure!(
+        language.r#type.is_some(),
+        "Language type not specified in config file"
+    );
+    ensure!(
+        language.version.is_some(),
+        "Language version not specified in config file"
     );
     Ok(())
 }
@@ -69,16 +82,9 @@ fn validate_and_update_workflow(
     .context("Failed to convert readme to raw url")?
     .to_url()?;
 
-    let primary_wf_count = config
-        .workflow
-        .files
-        .iter()
-        .filter(|f| f.is_primary())
-        .count();
     ensure!(
-        primary_wf_count == 1,
-        "Expected one primary workflow file. Found {}",
-        primary_wf_count
+        config.workflow.primary_wf_url().is_ok(),
+        "Expected one primary workflow file."
     );
 
     for file in &mut config.workflow.files {

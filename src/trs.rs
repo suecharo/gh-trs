@@ -395,16 +395,11 @@ pub struct FileWrapper {
 #[cfg(not(tarpaulin_include))]
 mod tests {
     use super::*;
-
-    use serde_json;
-    use serde_yaml;
-    use std::fs;
-    use std::io::BufReader;
+    use crate::config_io;
 
     #[test]
     fn test_new_or_update_service_info() -> Result<()> {
-        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
-        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
         let service_info = ServiceInfo::new_or_update(None, &config, "test_owner", "test_name")?;
 
         let expect = serde_json::from_str::<ServiceInfo>(
@@ -458,8 +453,7 @@ mod tests {
 
     #[test]
     fn test_tool_new() -> Result<()> {
-        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
-        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
         let tool = Tool::new(&config, "test_owner", "test_name")?;
 
         let expect = serde_json::from_str::<Tool>(
@@ -484,8 +478,7 @@ mod tests {
 
     #[test]
     fn test_tool_add_new_tool_version() -> Result<()> {
-        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
-        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
         let mut tool = Tool::new(&config, "test_owner", "test_name")?;
         tool.add_new_tool_version(&config, "test_owner", "test_name")?;
         assert_eq!(tool.versions.len(), 1);
@@ -526,8 +519,7 @@ mod tests {
 
     #[test]
     fn test_tool_version_new() -> Result<()> {
-        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
-        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
         let tool_version = ToolVersion::new(&config, "test_owner", "test_name")?;
 
         let expect = serde_json::from_str::<ToolVersion>(
@@ -550,8 +542,7 @@ mod tests {
 
     #[test]
     fn test_tool_version_version() -> Result<()> {
-        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
-        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
         let tool_version = ToolVersion::new(&config, "test_owner", "test_name")?;
         let version = tool_version.version();
         assert_eq!(version, "1.0.0");

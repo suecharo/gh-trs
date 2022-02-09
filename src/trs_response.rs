@@ -179,13 +179,8 @@ fn generate_tool_classes(owner: &str, name: &str) -> Result<Vec<trs::ToolClass>>
 }
 
 fn generate_descriptor(config: &config::Config) -> Result<trs::FileWrapper> {
-    let primary_wf = config
-        .workflow
-        .files
-        .iter()
-        .find(|f| f.is_primary())
-        .unwrap(); // already validated
-    let (content, checksum) = match remote::fetch_raw_content(&primary_wf.url) {
+    let primary_wf_url = config.workflow.primary_wf_url()?;
+    let (content, checksum) = match remote::fetch_raw_content(&primary_wf_url) {
         Ok(content) => {
             let checksum = trs::Checksum::new_from_string(content.clone());
             (Some(content), Some(vec![checksum]))
@@ -195,7 +190,7 @@ fn generate_descriptor(config: &config::Config) -> Result<trs::FileWrapper> {
     Ok(trs::FileWrapper {
         content,
         checksum,
-        url: Some(primary_wf.url.clone()),
+        url: Some(primary_wf_url),
     })
 }
 
@@ -240,16 +235,11 @@ fn generate_tools_id_versions_version_tests(
 #[cfg(not(tarpaulin_include))]
 mod tests {
     use super::*;
-
-    use serde_json;
-    use serde_yaml;
-    use std::fs;
-    use std::io::BufReader;
+    use crate::config_io;
 
     #[test]
     fn test_trs_response_new() -> Result<()> {
-        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
-        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
         let trs_response = TrsResponse::new(&config, "test_owner", "test_name")?;
         println!("{}", serde_json::to_string_pretty(&trs_response)?);
         Ok(())
@@ -274,16 +264,14 @@ mod tests {
 
     #[test]
     fn test_generate_descriptor() -> Result<()> {
-        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
-        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
         generate_descriptor(&config)?;
         Ok(())
     }
 
     #[test]
     fn test_generate_tools_id_versions_version_files() -> Result<()> {
-        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
-        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
         let files = generate_tools_id_versions_version_files(&config)?;
         let expect = serde_json::from_str::<Vec<trs::ToolFile>>(
             r#"
@@ -321,8 +309,7 @@ mod tests {
 
     #[test]
     fn test_generate_tools_id_versions_version_tests() -> Result<()> {
-        let reader = BufReader::new(fs::File::open("./tests/test_config_CWL_validated.yml")?);
-        let config: config::Config = serde_yaml::from_reader(reader)?;
+        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
         let tests = generate_tools_id_versions_version_tests(&config)?;
         let expect = serde_json::from_str::<Vec<trs::FileWrapper>>(
             r#"

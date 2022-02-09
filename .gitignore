@@ -13,3 +13,4 @@ target/
 
 .env
 gh-trs-config.yml
+sapporo_run/

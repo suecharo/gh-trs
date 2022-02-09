@@ -13,6 +13,7 @@ mod trs;
 mod trs_api;
 mod trs_response;
 mod validate;
+mod wes;
 
 use anyhow::Result;
 use colored::Colorize;

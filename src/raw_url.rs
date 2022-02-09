@@ -198,30 +198,10 @@ mod tests {
             &file_path.to_string_lossy()
         ))?;
 
-        let raw_url_1 = RawUrl::new(
-            &gh_token,
-            &url_1,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
-        )?;
-        let raw_url_2 = RawUrl::new(
-            &gh_token,
-            &url_2,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
-        )?;
-        let raw_url_3 = RawUrl::new(
-            &gh_token,
-            &url_3,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
-        )?;
-        let raw_url_4 = RawUrl::new(
-            &gh_token,
-            &url_4,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
-        )?;
+        let raw_url_1 = RawUrl::new(&gh_token, &url_1, None, None)?;
+        let raw_url_2 = RawUrl::new(&gh_token, &url_2, None, None)?;
+        let raw_url_3 = RawUrl::new(&gh_token, &url_3, None, None)?;
+        let raw_url_4 = RawUrl::new(&gh_token, &url_4, None, None)?;
 
         let expect = RawUrl {
             owner: owner,
@@ -252,13 +232,7 @@ mod tests {
     fn test_raw_url_invalid_url() -> Result<()> {
         let gh_token = env::github_token(&None::<String>)?;
         let url = Url::parse("https://example.com/path/to/file")?;
-        let err = RawUrl::new(
-            &gh_token,
-            &url,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
-        )
-        .unwrap_err();
+        let err = RawUrl::new(&gh_token, &url, None, None).unwrap_err();
         assert_eq!(
             err.to_string(),
             "Only GitHub URLs are supported, your input URL: https://example.com/path/to/file"
@@ -270,13 +244,7 @@ mod tests {
     fn test_raw_url_invalid_host() -> Result<()> {
         let gh_token = env::github_token(&None::<String>)?;
         let url = Url::parse("https://example.com/path/to/file")?;
-        let err = RawUrl::new(
-            &gh_token,
-            &url,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
-        )
-        .unwrap_err();
+        let err = RawUrl::new(&gh_token, &url, None, None).unwrap_err();
         assert_eq!(
             err.to_string(),
             "Only GitHub URLs are supported, your input URL: https://example.com/path/to/file"
@@ -289,14 +257,7 @@ mod tests {
         let gh_token = env::github_token(&None::<String>)?;
         let url =
             Url::parse("https://github.com/suecharo/gh-trs/blob/invalid_branch/path/to/workflow")?;
-        let err = RawUrl::new(
-            &gh_token,
-            &url,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
-        )
-        .unwrap_err();
-        assert!(err.to_string().contains("Failed to get branch"));
+        assert!(RawUrl::new(&gh_token, &url, None, None).is_err());
         Ok(())
     }
 
@@ -321,12 +282,7 @@ mod tests {
             &commit,
             &file_path.to_string_lossy()
         ))?;
-        let raw_url = RawUrl::new(
-            &gh_token,
-            &url,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
-        )?;
+        let raw_url = RawUrl::new(&gh_token, &url, None, None)?;
         let base_dir = raw_url.base_dir()?;
         assert_eq!(base_dir, PathBuf::from("path/to"));
         Ok(())
@@ -346,12 +302,7 @@ mod tests {
             &commit,
             &file_path.to_string_lossy()
         ))?;
-        let raw_url = RawUrl::new(
-            &gh_token,
-            &url,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
-        )?;
+        let raw_url = RawUrl::new(&gh_token, &url, None, None)?;
         let to_url = raw_url.to_url()?;
         assert_eq!(
             to_url,
@@ -380,12 +331,7 @@ mod tests {
             &commit,
             &file_path.to_string_lossy()
         ))?;
-        let raw_url = RawUrl::new(
-            &gh_token,
-            &url,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
-        )?;
+        let raw_url = RawUrl::new(&gh_token, &url, None, None)?;
         let to_url = raw_url.to_base_url()?;
         assert_eq!(
             to_url,

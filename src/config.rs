@@ -37,7 +37,7 @@ impl Author {
             github_account,
             name: Some(name),
             affiliation: Some(affiliation),
-            orcid: None::<String>,
+            orcid: None,
         })
     }
 }

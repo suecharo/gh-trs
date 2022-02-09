@@ -80,11 +80,11 @@ impl ServiceInfo {
                     config.authors[0].github_account // already validated
                 ))?,
             },
-            contact_url: None::<Url>,
-            documentation_url: None::<Url>,
+            contact_url: None,
+            documentation_url: None,
             created_at: Some(created_at),
             updated_at: Some(created_at.clone()),
-            environment: None::<String>,
+            environment: None,
             version: created_at.format("%Y%m%d%H%M%S").to_string(),
         })
     }

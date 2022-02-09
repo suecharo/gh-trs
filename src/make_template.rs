@@ -7,7 +7,6 @@ use crate::raw_url;
 
 use anyhow::{anyhow, Result};
 use log::{debug, info};
-use std::collections::HashMap;
 use std::path::Path;
 use url::Url;
 use uuid::Uuid;
@@ -24,12 +23,7 @@ pub fn make_template(
         "Making a template from workflow location: {}",
         wf_loc.as_str()
     );
-    let primary_wf = raw_url::RawUrl::new(
-        &gh_token,
-        wf_loc,
-        None::<&mut HashMap<String, String>>,
-        None::<&mut HashMap<String, String>>,
-    )?;
+    let primary_wf = raw_url::RawUrl::new(&gh_token, wf_loc, None, None)?;
 
     let wf_id = Uuid::new_v4();
     let wf_version = "1.0.0".to_string();
@@ -43,8 +37,8 @@ pub fn make_template(
     let readme = raw_url::RawUrl::new(
         &gh_token,
         &github_api::get_readme_url(&gh_token, &primary_wf.owner, &primary_wf.name)?,
-        None::<&mut HashMap<String, String>>,
-        None::<&mut HashMap<String, String>>,
+        None,
+        None,
     )?
     .to_url()?;
     let language = inspect::inspect_wf_type_version(&primary_wf.to_url()?)?;
@@ -114,8 +108,8 @@ mod tests {
             &Url::parse(
                 "https://github.com/suecharo/gh-trs/blob/main/tests/CWL/wf/trimming_and_qc.cwl",
             )?,
-            None::<&mut HashMap<String, String>>,
-            None::<&mut HashMap<String, String>>,
+            None,
+            None,
         )?;
         let files = obtain_wf_files(&gh_token, &primary_wf)?;
         assert_eq!(files.len(), 3);

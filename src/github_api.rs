@@ -442,12 +442,7 @@ pub fn create_branch(
     name: impl AsRef<str>,
     branch_name: impl AsRef<str>,
 ) -> Result<()> {
-    let default_branch = get_default_branch(
-        &gh_token,
-        &owner,
-        &name,
-        None::<&mut HashMap<String, String>>,
-    )?;
+    let default_branch = get_default_branch(&gh_token, &owner, &name, None)?;
     let default_branch_sha = get_branch_sha(&gh_token, &owner, &name, &default_branch)?;
     create_ref(
         &gh_token,
@@ -584,12 +579,7 @@ mod tests {
     #[test]
     fn test_get_default_branch() -> Result<()> {
         let gh_token = env::github_token(&None::<String>)?;
-        let branch = get_default_branch(
-            &gh_token,
-            "suecharo",
-            "gh-trs",
-            None::<&mut HashMap<String, String>>,
-        )?;
+        let branch = get_default_branch(&gh_token, "suecharo", "gh-trs", None)?;
         assert_eq!(branch, "main");
         Ok(())
     }
@@ -606,13 +596,7 @@ mod tests {
     #[test]
     fn test_get_latest_commit_sha() -> Result<()> {
         let gh_token = env::github_token(&None::<String>)?;
-        get_latest_commit_sha(
-            &gh_token,
-            "suecharo",
-            "gh-trs",
-            "main",
-            None::<&mut HashMap<String, String>>,
-        )?;
+        get_latest_commit_sha(&gh_token, "suecharo", "gh-trs", "main", None)?;
         Ok(())
     }
 

@@ -1,5 +1,6 @@
 mod args;
 mod config;
+mod config_io;
 mod env;
 mod github_api;
 mod inspect;
@@ -49,12 +50,12 @@ fn main() -> Result<()> {
             }
         }
         args::Args::Validate {
-            config_file,
+            config_location,
             github_token,
             ..
         } => {
             info!("{} validate", "Running".green());
-            match validate::validate(&config_file, &github_token) {
+            match validate::validate(&config_location, &github_token) {
                 Ok(_) => info!("{} validate", "Success".green()),
                 Err(e) => {
                     error!("{} validate with error: {}", "Failed".red(), e);
@@ -63,14 +64,14 @@ fn main() -> Result<()> {
             };
         }
         args::Args::Publish {
-            config_file,
+            config_location,
             github_token,
             repo,
             branch,
             ..
         } => {
             info!("{} validate", "Running".green());
-            let config = match validate::validate(&config_file, &github_token) {
+            let config = match validate::validate(&config_location, &github_token) {
                 Ok(config) => {
                     info!("{} validate", "Success".green());
                     config

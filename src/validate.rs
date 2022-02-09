@@ -1,29 +1,27 @@
 use crate::config;
+use crate::config_io;
 use crate::env;
 use crate::raw_url;
 
 use anyhow::{ensure, Context, Result};
 use log::{debug, info};
-use serde_yaml;
 use std::collections::{HashMap, HashSet};
-use std::fs;
-use std::io::BufReader;
-use std::path::Path;
 
 #[cfg(not(tarpaulin_include))]
 pub fn validate(
-    config_file: impl AsRef<Path>,
+    config_loc: impl AsRef<str>,
     gh_token: &Option<impl AsRef<str>>,
 ) -> Result<config::Config> {
     let gh_token = env::github_token(gh_token)?;
 
-    info!("Validating config file: {}", config_file.as_ref().display());
-    let reader = BufReader::new(fs::File::open(config_file)?);
-    let mut config: config::Config = serde_yaml::from_reader(reader)?;
+    info!("Validating config file: {}", config_loc.as_ref());
+    let mut config = config_io::read_config(config_loc.as_ref())?;
     debug!("config:\n{:#?}", &config);
+
     validate_authors(&config.authors)?;
     validate_wf_name(&config.workflow.name)?;
     validate_and_update_workflow(&gh_token, &mut config)?;
+
     debug!("updated config:\n{:#?}", &config);
 
     Ok(config)

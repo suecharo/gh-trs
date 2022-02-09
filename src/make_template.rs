@@ -1,4 +1,5 @@
 use crate::config;
+use crate::config_io;
 use crate::env;
 use crate::github_api;
 use crate::inspect;
@@ -7,8 +8,6 @@ use crate::raw_url;
 use anyhow::{anyhow, Result};
 use log::{debug, info};
 use std::collections::HashMap;
-use std::fs;
-use std::io::{BufWriter, Write};
 use std::path::Path;
 use url::Url;
 use uuid::Uuid;
@@ -34,7 +33,6 @@ pub fn make_template(
 
     let wf_id = Uuid::new_v4();
     let wf_version = "1.0.0".to_string();
-    // let wf_license = github_api::get_license(&gh_token, &primary_wf.owner, &primary_wf.name)?;
     let author = config::Author {
         github_account: config::Author::new_from_api(&gh_token)?.github_account,
         name: None,
@@ -68,8 +66,8 @@ pub fn make_template(
     };
     debug!("config:\n{:#?}", config);
 
-    let mut buffer = BufWriter::new(fs::File::create(&output)?);
-    buffer.write(serde_json::to_string_pretty(&config)?.as_bytes())?;
+    let file_ext = config_io::parse_file_ext(&output)?;
+    config_io::write_config(&config, &output, &file_ext)?;
 
     Ok(())
 }

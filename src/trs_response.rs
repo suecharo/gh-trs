@@ -11,6 +11,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TrsResponse {
+    pub gh_trs_config: config::Config,
     pub service_info: trs::ServiceInfo,
     pub tool_classes: Vec<trs::ToolClass>,
     pub tools: Vec<trs::Tool>,
@@ -73,6 +74,7 @@ impl TrsResponse {
         let tools_id_versions_version_tests = generate_tools_id_versions_version_tests(&config)?;
 
         Ok(Self {
+            gh_trs_config: config.clone(),
             service_info,
             tool_classes,
             tools,
@@ -86,13 +88,25 @@ impl TrsResponse {
         })
     }
 
-    pub fn generate_contents(
-        &self,
-        descriptor_type: impl AsRef<str>,
-    ) -> Result<HashMap<PathBuf, String>> {
+    pub fn generate_contents(&self) -> Result<HashMap<PathBuf, String>> {
         let id = self.tools_id.id.clone();
         let version = self.tools_id_versions_version.version().clone();
+        let descriptor_type = self
+            .gh_trs_config
+            .workflow
+            .language
+            .r#type
+            .clone()
+            .unwrap()
+            .to_string();
         let mut map: HashMap<PathBuf, String> = HashMap::new();
+        map.insert(
+            PathBuf::from(format!(
+                "tools/{}/versions/{}/gh-trs-config.json",
+                id, version
+            )),
+            serde_json::to_string(&self.gh_trs_config)?,
+        );
         map.insert(
             PathBuf::from("service-info/index.json"),
             serde_json::to_string(&self.service_info)?,
@@ -120,27 +134,21 @@ impl TrsResponse {
         map.insert(
             PathBuf::from(format!(
                 "tools/{}/versions/{}/{}/descriptor/index.json",
-                id,
-                version,
-                descriptor_type.as_ref()
+                id, version, descriptor_type
             )),
             serde_json::to_string(&self.tools_id_versions_version_descriptor)?,
         );
         map.insert(
             PathBuf::from(format!(
                 "tools/{}/versions/{}/{}/files/index.json",
-                id,
-                version,
-                descriptor_type.as_ref()
+                id, version, descriptor_type
             )),
             serde_json::to_string(&self.tools_id_versions_version_files)?,
         );
         map.insert(
             PathBuf::from(format!(
                 "tools/{}/versions/{}/{}/tests/index.json",
-                id,
-                version,
-                descriptor_type.as_ref()
+                id, version, descriptor_type
             )),
             serde_json::to_string(&self.tools_id_versions_version_tests)?,
         );

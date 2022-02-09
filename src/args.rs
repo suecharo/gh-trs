@@ -30,9 +30,9 @@ pub enum Args {
 
     /// Validate the gh-trs configuration file.
     Validate {
-        /// Path to the gh-trs configuration file.
-        #[structopt(parse(from_os_str), default_value = "gh-trs-config.yml")]
-        config_file: PathBuf,
+        /// Location of the gh-trs configuration file (local file path or remote URL).
+        #[structopt(default_value = "gh-trs-config.yml")]
+        config_location: String,
 
         /// GitHub Personal Access Token.
         #[structopt(long)]
@@ -45,9 +45,9 @@ pub enum Args {
 
     /// Publish the TRS response to GitHub.
     Publish {
-        /// Path to the gh-trs configuration file.
-        #[structopt(parse(from_os_str), default_value = "gh-trs-config.yml")]
-        config_file: PathBuf,
+        /// Location of the gh-trs configuration file (local file path or remote URL).
+        #[structopt(default_value = "gh-trs-config.yml")]
+        config_location: String,
 
         /// GitHub Personal Access Token.
         #[structopt(long)]
@@ -100,7 +100,7 @@ mod tests {
         assert_eq!(
             args,
             Args::Validate {
-                config_file: PathBuf::from("gh-trs-config.yml"),
+                config_location: "gh-trs-config.yml".to_string(),
                 github_token: None,
                 verbose: false,
             }
@@ -120,7 +120,7 @@ mod tests {
         assert_eq!(
             args,
             Args::Publish {
-                config_file: PathBuf::from("gh_trs_config.yml"),
+                config_location: "gh_trs_config.yml".to_string(),
                 repo: "suecharo/gh-trs".to_string(),
                 github_token: None,
                 branch: "gh-pages".to_string(),

@@ -332,7 +332,9 @@ pub fn get_file_list_recursive(
                         )?;
                         file_list.append(&mut sub_file_list);
                     }
-                    _ => {}
+                    _ => {
+                        unreachable!("Unknown file type: {}", r#type);
+                    }
                 }
             }
             Ok(file_list)

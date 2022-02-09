@@ -323,7 +323,7 @@ pub fn get_run_status(wes_loc: &Url, run_id: impl AsRef<str>) -> Result<RunStatu
     let res_body = response.json::<Value>()?;
     Ok(RunStatus::from_str(
         res_body
-            .get("status")
+            .get("state")
             .ok_or(anyhow!(err_msg))?
             .as_str()
             .ok_or(anyhow!(err_msg))?,

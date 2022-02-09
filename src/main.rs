@@ -9,6 +9,7 @@ mod make_template;
 mod publish;
 mod raw_url;
 mod remote;
+mod test;
 mod trs;
 mod trs_api;
 mod trs_response;
@@ -27,6 +28,7 @@ fn main() -> Result<()> {
     let verbose = match args {
         args::Args::MakeTemplate { verbose, .. } => verbose,
         args::Args::Validate { verbose, .. } => verbose,
+        args::Args::Test { verbose, .. } => verbose,
         args::Args::Publish { verbose, .. } => verbose,
     };
     logger::init_logger(verbose);
@@ -60,6 +62,38 @@ fn main() -> Result<()> {
                 Ok(_) => info!("{} validate", "Success".green()),
                 Err(e) => {
                     error!("{} validate with error: {}", "Failed".red(), e);
+                    exit(1);
+                }
+            };
+        }
+        args::Args::Test {
+            config_location,
+            github_token,
+            wes_location,
+            docker_host,
+            ..
+        } => {
+            info!("{} validate", "Running".green());
+            let config = match validate::validate(&config_location, &github_token) {
+                Ok(config) => {
+                    info!("{} validate", "Success".green());
+                    config
+                }
+                Err(e) => {
+                    error!("{} validate with error: {}", "Failed".red(), e);
+                    exit(1);
+                }
+            };
+
+            info!("{} test", "Running".green());
+            match test::test(&config, &wes_location, &docker_host) {
+                Ok(_) => info!("{} test", "Success".green()),
+                Err(e) => {
+                    match wes::stop_wes(&docker_host) {
+                        Ok(_) => {}
+                        Err(e) => error!("{} to stop WES with error: {}", "Failed".red(), e),
+                    }
+                    error!("{} test with error: {}", "Failed".red(), e);
                     exit(1);
                 }
             };

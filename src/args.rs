@@ -43,6 +43,30 @@ pub enum Args {
         verbose: bool,
     },
 
+    /// Test the workflow based on the gh-trs configuration file.
+    Test {
+        /// Location of the gh-trs configuration file (local file path or remote URL).
+        #[structopt(default_value = "gh-trs-config.yml")]
+        config_location: String,
+
+        /// GitHub Personal Access Token.
+        #[structopt(long)]
+        github_token: Option<String>,
+
+        /// Location of WES in which to run the test.
+        /// If not specified, `sapporo-service` will be started.
+        #[structopt(short, long)]
+        wes_location: Option<Url>,
+
+        /// Location of the docker host.
+        #[structopt(short, long, default_value = "unix:///var/run/docker.sock")]
+        docker_host: Url,
+
+        /// Verbose mode.
+        #[structopt(short, long)]
+        verbose: bool,
+    },
+
     /// Publish the TRS response to GitHub.
     Publish {
         /// Location of the gh-trs configuration file (local file path or remote URL).

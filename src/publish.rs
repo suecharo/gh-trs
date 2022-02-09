@@ -12,6 +12,7 @@ pub fn publish(
     gh_token: &Option<impl AsRef<str>>,
     repo: impl AsRef<str>,
     branch: impl AsRef<str>,
+    verified: bool,
 ) -> Result<()> {
     let gh_token = env::github_token(gh_token)?;
 
@@ -38,7 +39,7 @@ pub fn publish(
     let branch_sha = github_api::get_branch_sha(&gh_token, &owner, &name, branch.as_ref())?;
     let latest_commit_sha =
         github_api::get_latest_commit_sha(&gh_token, &owner, &name, branch.as_ref(), None)?;
-    let trs_response = trs_response::TrsResponse::new(&config, &owner, &name)?;
+    let trs_response = trs_response::TrsResponse::new(&config, &owner, &name, verified)?;
     let trs_contents = trs_response.generate_contents()?;
     let new_tree_sha =
         github_api::create_tree(&gh_token, &owner, &name, Some(&branch_sha), trs_contents)?;

@@ -1,6 +1,7 @@
 use anyhow::{anyhow, bail, Result};
 use dotenv::dotenv;
 use std::env;
+use url::Url;
 
 #[cfg(not(tarpaulin_include))]
 pub fn github_token(arg_token: &Option<impl AsRef<str>>) -> Result<String> {
@@ -34,4 +35,16 @@ pub fn sapporo_run_dir() -> Result<String> {
 pub fn in_ci() -> bool {
     dotenv().ok();
     env::var("GITHUB_ACTIONS").is_ok()
+}
+
+#[cfg(not(tarpaulin_include))]
+pub fn gh_actions_url() -> Result<Url> {
+    dotenv().ok();
+    let gh_server_url = env::var("GITHUB_SERVER_URL")?;
+    let gh_repo = env::var("GITHUB_REPOSITORY")?;
+    let gh_run_id = env::var("GITHUB_RUN_ID")?;
+    Ok(Url::parse(&format!(
+        "{}/{}/actions/runs/{}",
+        gh_server_url, gh_repo, gh_run_id
+    ))?)
 }

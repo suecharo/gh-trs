@@ -29,6 +29,7 @@ impl TrsResponse {
         config: &config::Config,
         owner: impl AsRef<str>,
         name: impl AsRef<str>,
+        verified: bool,
     ) -> Result<Self> {
         let service_info = trs::ServiceInfo::new_or_update(
             trs_api::get_service_info(&owner, &name).ok(),
@@ -46,7 +47,7 @@ impl TrsResponse {
             Some(tool) => {
                 // update tool
                 let mut tool = tool.clone();
-                tool.add_new_tool_version(&config, &owner, &name)?;
+                tool.add_new_tool_version(&config, &owner, &name, verified)?;
                 tools = tools
                     .into_iter()
                     .filter(|t| t.id != config.id)
@@ -57,7 +58,7 @@ impl TrsResponse {
             None => {
                 // create tool and add
                 let mut tool = trs::Tool::new(&config, &owner, &name)?;
-                tool.add_new_tool_version(&config, &owner, &name)?;
+                tool.add_new_tool_version(&config, &owner, &name, verified)?;
                 tools.push(tool.clone());
                 tool
             }
@@ -240,8 +241,7 @@ mod tests {
     #[test]
     fn test_trs_response_new() -> Result<()> {
         let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
-        let trs_response = TrsResponse::new(&config, "test_owner", "test_name")?;
-        println!("{}", serde_json::to_string_pretty(&trs_response)?);
+        TrsResponse::new(&config, "test_owner", "test_name", false)?;
         Ok(())
     }
 

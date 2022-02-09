@@ -87,7 +87,13 @@ fn main() -> Result<()> {
 
             info!("{} test", "Running".green());
             match test::test(&config, &wes_location, &docker_host) {
-                Ok(_) => info!("{} test", "Success".green()),
+                Ok(test_results) => match test::check_test_results(&test_results) {
+                    Ok(()) => info!("{} test", "Success".green()),
+                    Err(e) => {
+                        error!("{}", e);
+                        exit(1);
+                    }
+                },
                 Err(e) => {
                     match wes::stop_wes(&docker_host) {
                         Ok(_) => {}
@@ -103,6 +109,9 @@ fn main() -> Result<()> {
             github_token,
             repo,
             branch,
+            with_test,
+            wes_location,
+            docker_host,
             ..
         } => {
             info!("{} validate", "Running".green());
@@ -117,8 +126,31 @@ fn main() -> Result<()> {
                 }
             };
 
+            let verified = if with_test {
+                info!("{} test", "Running".green());
+                match test::test(&config, &wes_location, &docker_host) {
+                    Ok(test_results) => {
+                        match test::check_test_results(&test_results) {
+                            Ok(()) => info!("{} test", "Success".green()),
+                            Err(e) => error!("{}", e),
+                        };
+                        true
+                    }
+                    Err(e) => {
+                        match wes::stop_wes(&docker_host) {
+                            Ok(_) => {}
+                            Err(e) => error!("{} to stop WES with error: {}", "Failed".red(), e),
+                        }
+                        error!("{} test with error: {}", "Failed".red(), e);
+                        exit(1);
+                    }
+                }
+            } else {
+                false
+            };
+
             info!("{} publish", "Running".green());
-            match publish::publish(&config, &github_token, &repo, &branch) {
+            match publish::publish(&config, &github_token, &repo, &branch, verified) {
                 Ok(()) => info!("{} publish", "Success".green()),
                 Err(e) => {
                     error!("{} publish with error: {}", "Failed".red(), e);

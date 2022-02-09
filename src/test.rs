@@ -3,6 +3,7 @@ use crate::env;
 use crate::wes;
 
 use anyhow::{anyhow, bail, ensure, Result};
+use colored::Colorize;
 use log::{debug, info};
 use std::env as std_env;
 use std::fs;
@@ -11,7 +12,17 @@ use std::thread;
 use std::time;
 use url::Url;
 
-pub fn test(config: &config::Config, wes_loc: &Option<Url>, docker_host: &Url) -> Result<()> {
+pub struct TestResult {
+    pub id: String,
+    pub status: wes::RunStatus,
+    pub run_log: String,
+}
+
+pub fn test(
+    config: &config::Config,
+    wes_loc: &Option<Url>,
+    docker_host: &Url,
+) -> Result<Vec<TestResult>> {
     let wes_loc = match wes_loc {
         Some(wes_loc) => wes_loc.clone(),
         None => {
@@ -31,7 +42,7 @@ pub fn test(config: &config::Config, wes_loc: &Option<Url>, docker_host: &Url) -
     );
 
     let in_ci = env::in_ci();
-    let mut failed_tests = vec![];
+    let mut test_results = vec![];
     for test_case in &config.workflow.testing {
         info!("Testing {}", test_case.id);
         let form = wes::test_case_to_form(&config.workflow, test_case)?;
@@ -62,28 +73,40 @@ pub fn test(config: &config::Config, wes_loc: &Option<Url>, docker_host: &Url) -
                 debug!("Run log:\n{}", run_log);
             }
             wes::RunStatus::Failed => {
-                if in_ci {
-                    info!("Failed {}", test_case.id);
-                    failed_tests.push(test_case.id.clone());
-                } else {
-                    bail!("Failed {}. Run log:\n{}", test_case.id, run_log);
-                }
+                info!("Failed {}. Run log:\n{}", test_case.id, run_log);
             }
             _ => {
                 unreachable!("WES run status: {:?}", status);
             }
         }
-    }
-
-    if failed_tests.len() > 0 {
-        bail!(
-            "Failed {} tests: {}",
-            failed_tests.len(),
-            failed_tests.join(", ")
-        );
+        test_results.push(TestResult {
+            id: test_case.id.clone(),
+            status,
+            run_log,
+        });
     }
 
     wes::stop_wes(&docker_host)?;
 
+    Ok(test_results)
+}
+
+pub fn check_test_results(test_results: &Vec<TestResult>) -> Result<()> {
+    let failed_tests = test_results
+        .iter()
+        .filter(|r| r.status == wes::RunStatus::Failed)
+        .collect::<Vec<_>>();
+    if failed_tests.len() > 0 {
+        bail!(
+            "{} {} tests: {}",
+            "Failed".red(),
+            failed_tests.len(),
+            failed_tests
+                .iter()
+                .map(|r| r.id.clone())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
     Ok(())
 }

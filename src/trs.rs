@@ -1,4 +1,5 @@
 use crate::config;
+use crate::env;
 
 use anyhow::{anyhow, ensure, Result};
 use chrono::{DateTime, Utc};
@@ -235,8 +236,8 @@ impl Tool {
             tool_class: ToolClass::default(),
             description: Some(config.workflow.readme.clone()),
             meta_version: None,
-            has_checker: None,
-            checker_url: None,
+            has_checker: Some(true),
+            checker_url: Some(Url::parse("https://github.com/suecharo/gh-trs")?),
             versions: vec![],
         })
     }
@@ -248,6 +249,7 @@ impl Tool {
         config: &config::Config,
         owner: impl AsRef<str>,
         name: impl AsRef<str>,
+        verified: bool,
     ) -> Result<()> {
         let mut versions = self
             .versions
@@ -255,7 +257,7 @@ impl Tool {
             .into_iter()
             .filter(|v| v.version() != config.version)
             .collect::<Vec<ToolVersion>>();
-        versions.push(ToolVersion::new(&config, &owner, &name)?);
+        versions.push(ToolVersion::new(&config, &owner, &name, verified)?);
         self.versions = versions;
         Ok(())
     }
@@ -284,7 +286,21 @@ impl ToolVersion {
         config: &config::Config,
         owner: impl AsRef<str>,
         name: impl AsRef<str>,
+        verified: bool,
     ) -> Result<Self> {
+        let verified_source = if verified {
+            if env::in_ci() {
+                match env::gh_actions_url() {
+                    Ok(url) => Some(vec![url.to_string()]),
+                    Err(_) => None,
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         Ok(Self {
             author: Some(
                 config
@@ -314,8 +330,8 @@ impl ToolVersion {
             )]),
             containerfile: None,
             meta_version: None,
-            verified: None,
-            verified_source: None,
+            verified: Some(verified),
+            verified_source,
             signed: None,
             included_apps: None,
         })
@@ -469,6 +485,8 @@ mod tests {
     "description": "A computational workflow"
   },
   "description": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/README.md",
+  "has_checker": true,
+  "checker_url": "https://github.com/suecharo/gh-trs",
   "versions": []
 }"#,
         )?;
@@ -480,9 +498,9 @@ mod tests {
     fn test_tool_add_new_tool_version() -> Result<()> {
         let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
         let mut tool = Tool::new(&config, "test_owner", "test_name")?;
-        tool.add_new_tool_version(&config, "test_owner", "test_name")?;
+        tool.add_new_tool_version(&config, "test_owner", "test_name", true)?;
         assert_eq!(tool.versions.len(), 1);
-        tool.add_new_tool_version(&config, "test_owner", "test_name")?;
+        tool.add_new_tool_version(&config, "test_owner", "test_name", true)?;
         assert_eq!(tool.versions.len(), 1);
 
         let expect = serde_json::from_str::<Tool>(
@@ -498,6 +516,8 @@ mod tests {
     "description": "A computational workflow"
   },
   "description": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/README.md",
+  "has_checker": true,
+  "checker_url": "https://github.com/suecharo/gh-trs",
   "versions": [
     {
       "author": [
@@ -508,7 +528,8 @@ mod tests {
       "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
       "descriptor_type": [
         "CWL"
-      ]
+      ],
+      "verified": true
     }
   ]
 }"#,
@@ -520,8 +541,7 @@ mod tests {
     #[test]
     fn test_tool_version_new() -> Result<()> {
         let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
-        let tool_version = ToolVersion::new(&config, "test_owner", "test_name")?;
-
+        let tool_version = ToolVersion::new(&config, "test_owner", "test_name", true)?;
         let expect = serde_json::from_str::<ToolVersion>(
             r#"
 {
@@ -533,7 +553,8 @@ mod tests {
   "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
   "descriptor_type": [
     "CWL"
-  ]
+  ],
+  "verified": true
 }"#,
         )?;
         assert_eq!(tool_version, expect);
@@ -543,7 +564,7 @@ mod tests {
     #[test]
     fn test_tool_version_version() -> Result<()> {
         let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
-        let tool_version = ToolVersion::new(&config, "test_owner", "test_name")?;
+        let tool_version = ToolVersion::new(&config, "test_owner", "test_name", true)?;
         let version = tool_version.version();
         assert_eq!(version, "1.0.0");
         Ok(())

@@ -85,6 +85,19 @@ pub enum Args {
         #[structopt(short, long, default_value = "gh-pages")]
         branch: String,
 
+        /// Test before publishing.
+        #[structopt(long)]
+        with_test: bool,
+
+        /// Location of WES in which to run the test.
+        /// If not specified, `sapporo-service` will be started.
+        #[structopt(short, long)]
+        wes_location: Option<Url>,
+
+        /// Location of the docker host.
+        #[structopt(short, long, default_value = "unix:///var/run/docker.sock")]
+        docker_host: Url,
+
         /// Verbose mode.
         #[structopt(short, long)]
         verbose: bool,
@@ -133,21 +146,40 @@ mod tests {
     }
 
     #[test]
+    fn test_test() -> Result<()> {
+        let args = Args::from_iter(&["gh-trs", "test", "gh-trs-config.yml"]);
+        assert_eq!(
+            args,
+            Args::Test {
+                config_location: "gh-trs-config.yml".to_string(),
+                github_token: None,
+                wes_location: None,
+                docker_host: Url::parse("unix:///var/run/docker.sock")?,
+                verbose: false,
+            }
+        );
+        Ok(())
+    }
+
+    #[test]
     fn test_publish() -> Result<()> {
         let args = Args::from_iter(&[
             "gh-trs",
             "publish",
-            "gh_trs_config.yml",
+            "gh-trs-config.yml",
             "--repo",
             "suecharo/gh-trs",
         ]);
         assert_eq!(
             args,
             Args::Publish {
-                config_location: "gh_trs_config.yml".to_string(),
+                config_location: "gh-trs-config.yml".to_string(),
                 repo: "suecharo/gh-trs".to_string(),
                 github_token: None,
                 branch: "gh-pages".to_string(),
+                with_test: false,
+                wes_location: None,
+                docker_host: Url::parse("unix:///var/run/docker.sock")?,
                 verbose: false,
             }
         );

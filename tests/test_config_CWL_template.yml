@@ -1,0 +1,33 @@
+---
+id: 6e79bfb1-4aff-4d1f-9a0e-9f03e2fbb24c
+version: 1.0.0
+authors:
+  - github_account: suecharo
+workflow:
+  name: trimming_and_qc
+  readme: "https://raw.githubusercontent.com/suecharo/gh-trs/920701f8ee0e31d6e8db07303a4eb00d0d3d16ee/README.md"
+  language:
+    type: CWL
+    version: v1.0
+  files:
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/920701f8ee0e31d6e8db07303a4eb00d0d3d16ee/tests/CWL/wf/fastqc.cwl"
+      target: fastqc.cwl
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/920701f8ee0e31d6e8db07303a4eb00d0d3d16ee/tests/CWL/wf/trimming_and_qc.cwl"
+      target: trimming_and_qc.cwl
+      type: primary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/920701f8ee0e31d6e8db07303a4eb00d0d3d16ee/tests/CWL/wf/trimmomatic_pe.cwl"
+      target: trimmomatic_pe.cwl
+      type: secondary
+  testing:
+    - id: test_1
+      files:
+        - url: "https://example.com/path/to/wf_params.json"
+          target: wf_params.json
+          type: wf_params
+        - url: "https://example.com/path/to/wf_engine_params.json"
+          target: wf_engine_params.json
+          type: wf_engine_params
+        - url: "https://example.com/path/to/data.fq"
+          target: data.fq
+          type: other

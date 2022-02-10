@@ -284,7 +284,7 @@ mod tests {
             r#"
 [
   {
-    "path": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/fastqc.cwl",
+    "path": "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/CWL/wf/fastqc.cwl",
     "file_type": "SECONDARY_DESCRIPTOR",
     "checksum": {
       "checksum": "1bd771a51336a782b695db8334872e00f305cd7c49c4978e7e58786ea4714437",
@@ -292,7 +292,7 @@ mod tests {
     }
   },
   {
-    "path": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/trimming_and_qc.cwl",
+    "path": "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/CWL/wf/trimming_and_qc.cwl",
     "file_type": "PRIMARY_DESCRIPTOR",
     "checksum": {
       "checksum": "33ef70b2d5ee38cb394c5ca6354243f44a85118271026eb9fc61365a703e730b",
@@ -300,15 +300,14 @@ mod tests {
     }
   },
   {
-    "path": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/trimmomatic_pe.cwl",
+    "path": "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/CWL/wf/trimmomatic_pe.cwl",
     "file_type": "SECONDARY_DESCRIPTOR",
     "checksum": {
       "checksum": "531d0a38116347cade971c211056334f7cae48e1293e2bb0e334894e55636f8e",
       "type": "sha256"
     }
   }
-]
-"#,
+]"#,
         )?;
         assert_eq!(files, expect);
         Ok(())
@@ -322,16 +321,15 @@ mod tests {
             r#"
 [
   {
-    "content": "{\"id\":\"test_1\",\"files\":[{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/wf_params.json\",\"target\":\"wf_params.json\",\"type\":\"wf_params\"},{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/ERR034597_1.small.fq.gz\",\"target\":\"ERR034597_1.small.fq.gz\",\"type\":\"other\"},{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/ERR034597_2.small.fq.gz\",\"target\":\"ERR034597_2.small.fq.gz\",\"type\":\"other\"}]}",
+    "content": "{\"id\":\"test_1\",\"files\":[{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/4e7e2e3ddb42bdaaf5e294f4bf67319f23c4eaa4/tests/CWL/test/wf_params.json\",\"target\":\"wf_params.json\",\"type\":\"wf_params\"},{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/4e7e2e3ddb42bdaaf5e294f4bf67319f23c4eaa4/tests/CWL/test/ERR034597_1.small.fq.gz\",\"target\":\"ERR034597_1.small.fq.gz\",\"type\":\"other\"},{\"url\":\"https://raw.githubusercontent.com/suecharo/gh-trs/4e7e2e3ddb42bdaaf5e294f4bf67319f23c4eaa4/tests/CWL/test/ERR034597_2.small.fq.gz\",\"target\":\"ERR034597_2.small.fq.gz\",\"type\":\"other\"}]}",
     "checksum": [
       {
-        "checksum": "89d3af294e5168a27b3c281516e0586db9fb0c0485e49737fb648f9de1165f2f",
+        "checksum": "e6de556f3d71919d6e678d319231f9cf8d240bec594b09d1eff137c8de4dd9e9",
         "type": "sha256"
       }
     ]
   }
-]
-"#,
+]"#,
         )?;
         assert_eq!(tests, expect);
         Ok(())

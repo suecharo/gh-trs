@@ -476,20 +476,21 @@ mod tests {
         let expect = serde_json::from_str::<Tool>(
             r#"
 {
-  "url": "https://test_owner.github.io/test_name/tools/5ca05f9a-d98d-42ee-8057-02abbbb6011f",
-  "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
-  "organization": "suecharo",
+  "url": "https://test_owner.github.io/test_name/tools/493c4948-987a-482b-993c-733bdb3d1d6c",
+  "id": "493c4948-987a-482b-993c-733bdb3d1d6c",
+  "organization": "@suecharo",
   "name": "trimming_and_qc",
   "tool_class": {
     "id": "workflow",
     "name": "Workflow",
     "description": "A computational workflow"
   },
-  "description": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/README.md",
+  "description": "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/README.md",
   "has_checker": true,
   "checker_url": "https://github.com/suecharo/gh-trs",
   "versions": []
-}"#,
+}
+"#,
         )?;
         assert_eq!(tool, expect);
         Ok(())
@@ -507,16 +508,16 @@ mod tests {
         let expect = serde_json::from_str::<Tool>(
             r#"
 {
-  "url": "https://test_owner.github.io/test_name/tools/5ca05f9a-d98d-42ee-8057-02abbbb6011f",
-  "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
-  "organization": "suecharo",
+  "url": "https://test_owner.github.io/test_name/tools/493c4948-987a-482b-993c-733bdb3d1d6c",
+  "id": "493c4948-987a-482b-993c-733bdb3d1d6c",
+  "organization": "@suecharo",
   "name": "trimming_and_qc",
   "tool_class": {
     "id": "workflow",
     "name": "Workflow",
     "description": "A computational workflow"
   },
-  "description": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/README.md",
+  "description": "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/README.md",
   "has_checker": true,
   "checker_url": "https://github.com/suecharo/gh-trs",
   "versions": [
@@ -525,8 +526,8 @@ mod tests {
         "suecharo"
       ],
       "name": "trimming_and_qc",
-      "url": "https://test_owner.github.io/test_name/tools/5ca05f9a-d98d-42ee-8057-02abbbb6011f/versions/1.0.0",
-      "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
+      "url": "https://test_owner.github.io/test_name/tools/493c4948-987a-482b-993c-733bdb3d1d6c/versions/1.0.0",
+      "id": "493c4948-987a-482b-993c-733bdb3d1d6c",
       "descriptor_type": [
         "CWL"
       ],
@@ -550,8 +551,8 @@ mod tests {
     "suecharo"
   ],
   "name": "trimming_and_qc",
-  "url": "https://test_owner.github.io/test_name/tools/5ca05f9a-d98d-42ee-8057-02abbbb6011f/versions/1.0.0",
-  "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
+  "url": "https://test_owner.github.io/test_name/tools/493c4948-987a-482b-993c-733bdb3d1d6c/versions/1.0.0",
+  "id": "493c4948-987a-482b-993c-733bdb3d1d6c",
   "descriptor_type": [
     "CWL"
   ],

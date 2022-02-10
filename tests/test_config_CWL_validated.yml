@@ -22,12 +22,12 @@ workflow:
   testing:
     - id: test_1
       files:
-        - url: "https://example.com/path/to/wf_params.json"
+        - url: "https://raw.githubusercontent.com/suecharo/gh-trs/4e7e2e3ddb42bdaaf5e294f4bf67319f23c4eaa4/tests/CWL/test/wf_params.json"
           target: wf_params.json
           type: wf_params
-        - url: "https://example.com/path/to/wf_engine_params.json"
-          target: wf_engine_params.json
-          type: wf_engine_params
-        - url: "https://example.com/path/to/data.fq"
-          target: data.fq
+        - url: "https://raw.githubusercontent.com/suecharo/gh-trs/4e7e2e3ddb42bdaaf5e294f4bf67319f23c4eaa4/tests/CWL/test/ERR034597_1.small.fq.gz"
+          target: ERR034597_1.small.fq.gz
+          type: other
+        - url: "https://raw.githubusercontent.com/suecharo/gh-trs/4e7e2e3ddb42bdaaf5e294f4bf67319f23c4eaa4/tests/CWL/test/ERR034597_2.small.fq.gz"
+          target: ERR034597_2.small.fq.gz
           type: other

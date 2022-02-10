@@ -52,13 +52,12 @@ pub struct Workflow {
 }
 
 impl Workflow {
-    pub fn primary_wf_url(&self) -> Result<Url> {
+    pub fn primary_wf(&self) -> Result<File> {
         Ok(self
             .files
             .iter()
             .find(|f| f.is_primary())
             .ok_or(anyhow!("No primary workflow file"))?
-            .url
             .clone())
     }
 }

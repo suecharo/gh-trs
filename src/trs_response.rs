@@ -180,8 +180,8 @@ fn generate_tool_classes(owner: &str, name: &str) -> Result<Vec<trs::ToolClass>>
 }
 
 fn generate_descriptor(config: &config::Config) -> Result<trs::FileWrapper> {
-    let primary_wf_url = config.workflow.primary_wf_url()?;
-    let (content, checksum) = match remote::fetch_raw_content(&primary_wf_url) {
+    let primary_wf = config.workflow.primary_wf()?;
+    let (content, checksum) = match remote::fetch_raw_content(&primary_wf.url) {
         Ok(content) => {
             let checksum = trs::Checksum::new_from_string(content.clone());
             (Some(content), Some(vec![checksum]))
@@ -191,7 +191,7 @@ fn generate_descriptor(config: &config::Config) -> Result<trs::FileWrapper> {
     Ok(trs::FileWrapper {
         content,
         checksum,
-        url: Some(primary_wf_url),
+        url: Some(primary_wf.url),
     })
 }
 

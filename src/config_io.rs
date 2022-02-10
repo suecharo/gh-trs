@@ -43,21 +43,14 @@ pub fn read_config(location: impl AsRef<str>) -> Result<config::Config> {
     match Url::parse(location.as_ref()) {
         Ok(url) => {
             // as remote url
+            // Even json can be read with yaml reader
             let content = remote::fetch_raw_content(&url)?;
-            let ext = parse_file_ext(url.path())?;
-            Ok(match ext {
-                FileExt::Yaml => serde_yaml::from_str(&content)?,
-                FileExt::Json => serde_json::from_str(&content)?,
-            })
+            Ok(serde_yaml::from_str(&content)?)
         }
         Err(_) => {
             // as local file path
-            let ext = parse_file_ext(location.as_ref())?;
             let reader = BufReader::new(fs::File::open(location.as_ref())?);
-            Ok(match ext {
-                FileExt::Yaml => serde_yaml::from_reader(reader)?,
-                FileExt::Json => serde_json::from_reader(reader)?,
-            })
+            Ok(serde_yaml::from_reader(reader)?)
         }
     }
 }

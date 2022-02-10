@@ -1,59 +1,33 @@
-{
-  "id": "5ca05f9a-d98d-42ee-8057-02abbbb6011f",
-  "version": "1.0.0",
-  "license": "Apache-2.0",
-  "authors": [
-    {
-      "github_account": "suecharo",
-      "name": "Example Name",
-      "affiliation": "Example Affiliation"
-    }
-  ],
-  "workflow": {
-    "name": "trimming_and_qc",
-    "readme": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/README.md",
-    "language": {
-      "type": "CWL",
-      "version": "v1.0"
-    },
-    "files": [
-      {
-        "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/fastqc.cwl",
-        "target": "fastqc.cwl",
-        "type": "secondary"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/trimming_and_qc.cwl",
-        "target": "trimming_and_qc.cwl",
-        "type": "primary"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/wf/trimmomatic_pe.cwl",
-        "target": "trimmomatic_pe.cwl",
-        "type": "secondary"
-      }
-    ],
-    "testing": [
-      {
-        "id": "test_1",
-        "files": [
-          {
-            "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/wf_params.json",
-            "target": "wf_params.json",
-            "type": "wf_params"
-          },
-          {
-            "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/ERR034597_1.small.fq.gz",
-            "target": "ERR034597_1.small.fq.gz",
-            "type": "other"
-          },
-          {
-            "url": "https://raw.githubusercontent.com/suecharo/gh-trs/b02f189daddcbc2c0a2c0091300f2b90cca49c49/tests/CWL/test/ERR034597_2.small.fq.gz",
-            "target": "ERR034597_2.small.fq.gz",
-            "type": "other"
-          }
-        ]
-      }
-    ]
-  }
-}
+---
+id: 493c4948-987a-482b-993c-733bdb3d1d6c
+version: 1.0.0
+authors:
+  - github_account: suecharo
+workflow:
+  name: trimming_and_qc
+  readme: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/README.md"
+  language:
+    type: CWL
+    version: v1.0
+  files:
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/CWL/wf/fastqc.cwl"
+      target: fastqc.cwl
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/CWL/wf/trimming_and_qc.cwl"
+      target: trimming_and_qc.cwl
+      type: primary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/CWL/wf/trimmomatic_pe.cwl"
+      target: trimmomatic_pe.cwl
+      type: secondary
+  testing:
+    - id: test_1
+      files:
+        - url: "https://example.com/path/to/wf_params.json"
+          target: wf_params.json
+          type: wf_params
+        - url: "https://example.com/path/to/wf_engine_params.json"
+          target: wf_engine_params.json
+          type: wf_engine_params
+        - url: "https://example.com/path/to/data.fq"
+          target: data.fq
+          type: other

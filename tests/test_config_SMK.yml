@@ -1,95 +1,53 @@
-{
-  "id": "65db21fa-92b4-46f7-9e8e-f4c448686ced",
-  "version": "1.0.0",
-  "license": "Apache-2.0",
-  "authors":
-    [
-      {
-        "github_account": "suecharo",
-        "name": "Example Name",
-        "affiliation": "Example Affiliation",
-      },
-    ],
-  "workflow":
-    {
-      "name": "Snakefile",
-      "readme": "https://github.com/suecharo/gh-trs/blob/main/README.md",
-      "language": { "type": "SMK", "version": "1.0" },
-      "files":
-        [
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/Snakefile",
-            "target": "Snakefile",
-            "type": "primary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/data/genome.fa",
-            "target": "data/genome.fa",
-            "type": "secondary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/data/genome.fa.amb",
-            "target": "data/genome.fa.amb",
-            "type": "secondary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/data/genome.fa.ann",
-            "target": "data/genome.fa.ann",
-            "type": "secondary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/data/genome.fa.bwt",
-            "target": "data/genome.fa.bwt",
-            "type": "secondary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/data/genome.fa.fai",
-            "target": "data/genome.fa.fai",
-            "type": "secondary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/data/genome.fa.pac",
-            "target": "data/genome.fa.pac",
-            "type": "secondary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/data/genome.fa.sa",
-            "target": "data/genome.fa.sa",
-            "type": "secondary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/data/samples/A.fastq",
-            "target": "data/samples/A.fastq",
-            "type": "secondary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/data/samples/B.fastq",
-            "target": "data/samples/B.fastq",
-            "type": "secondary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/envs/calling.yaml",
-            "target": "envs/calling.yaml",
-            "type": "secondary",
-          },
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/wf/envs/mapping.yaml",
-            "target": "envs/mapping.yaml",
-            "type": "secondary",
-          },
-        ],
-      "testing":
-        [
-          {
-            "id": "test_1",
-            "files":
-              [
-                {
-                  "url": "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/test/wf_engine_params.json",
-                  "type": "wf_engine_params",
-                },
-              ],
-          },
-        ],
-    },
-}
+---
+id: fca0e8bc-afbb-40a4-924b-35326d1efb19
+version: 1.0.0
+authors:
+  - github_account: suecharo
+workflow:
+  name: Snakefile
+  readme: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/README.md"
+  language:
+    type: SMK
+    version: "1.0"
+  files:
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/Snakefile"
+      target: Snakefile
+      type: primary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/data/genome.fa"
+      target: data/genome.fa
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/data/genome.fa.amb"
+      target: data/genome.fa.amb
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/data/genome.fa.ann"
+      target: data/genome.fa.ann
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/data/genome.fa.bwt"
+      target: data/genome.fa.bwt
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/data/genome.fa.fai"
+      target: data/genome.fa.fai
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/data/genome.fa.pac"
+      target: data/genome.fa.pac
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/data/genome.fa.sa"
+      target: data/genome.fa.sa
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/data/samples/A.fastq"
+      target: data/samples/A.fastq
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/data/samples/B.fastq"
+      target: data/samples/B.fastq
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/envs/calling.yaml"
+      target: envs/calling.yaml
+      type: secondary
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/SMK/wf/envs/mapping.yaml"
+      target: envs/mapping.yaml
+      type: secondary
+  testing:
+    - id: test_1
+      files:
+        - url: "https://github.com/suecharo/gh-trs/blob/main/tests/SMK/test/wf_engine_params.json"
+          type: "wf_engine_params"

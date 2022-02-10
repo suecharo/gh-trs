@@ -1,48 +1,24 @@
-{
-  "id": "a0ce29e3-e441-4c8d-8157-5026b9c05d83",
-  "version": "1.0.0",
-  "license": "Apache-2.0",
-  "authors":
-    [
-      {
-        "github_account": "suecharo",
-        "name": "Example Name",
-        "affiliation": "Example Affiliation",
-      },
-    ],
-  "workflow":
-    {
-      "name": "file_input",
-      "readme": "https://github.com/suecharo/gh-trs/blob/main/README.md",
-      "language": { "type": "NFL", "version": "1.0" },
-      "files":
-        [
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/NFL/wf/file_input.nf",
-            "target": "file_input.nf",
-            "type": "primary",
-          },
-        ],
-      "testing":
-        [
-          {
-            "id": "test_1",
-            "files":
-              [
-                {
-                  "url": "https://github.com/suecharo/gh-trs/blob/main/tests/NFL/test/wf_params.json",
-                  "type": "wf_params",
-                },
-                {
-                  "url": "https://github.com/suecharo/gh-trs/blob/main/tests/NFL/test/wf_engine_params.json",
-                  "type": "wf_engine_params",
-                },
-                {
-                  "url": "https://github.com/suecharo/gh-trs/blob/main/tests/NFL/test/test_input.txt",
-                  "type": "other",
-                },
-              ],
-          },
-        ],
-    },
-}
+---
+id: 22126b81-c0ae-45ec-bce6-d7f404bbf171
+version: 1.0.0
+authors:
+  - github_account: suecharo
+workflow:
+  name: file_input
+  readme: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/README.md"
+  language:
+    type: NFL
+    version: "1.0"
+  files:
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/NFL/wf/file_input.nf"
+      target: file_input.nf
+      type: primary
+  testing:
+    - id: test_1
+      files:
+        - url: "https://github.com/suecharo/gh-trs/blob/main/tests/NFL/test/wf_params.json"
+          type: wf_params
+        - url: "https://github.com/suecharo/gh-trs/blob/main/tests/NFL/test/wf_engine_params.json"
+          type: wf_engine_params
+        - url: "https://github.com/suecharo/gh-trs/blob/main/tests/NFL/test/test_input.txt"
+          type: other

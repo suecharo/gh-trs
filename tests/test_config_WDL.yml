@@ -1,44 +1,22 @@
-{
-  "id": "5446f0ab-f41b-4222-8032-8e705588cd8d",
-  "version": "1.0.0",
-  "license": "Apache-2.0",
-  "authors":
-    [
-      {
-        "github_account": "suecharo",
-        "name": "Example Name",
-        "affiliation": "Example Affiliation",
-      },
-    ],
-  "workflow":
-    {
-      "name": "dockstore-tool-bamstats",
-      "readme": "https://github.com/suecharo/gh-trs/blob/main/README.md",
-      "language": { "type": "WDL", "version": "1.0" },
-      "files":
-        [
-          {
-            "url": "https://github.com/suecharo/gh-trs/blob/main/tests/WDL/wf/dockstore-tool-bamstats.wdl",
-            "target": "dockstore-tool-bamstats.wdl",
-            "type": "primary",
-          },
-        ],
-      "testing":
-        [
-          {
-            "id": "test_1",
-            "files":
-              [
-                {
-                  "url": "https://github.com/suecharo/gh-trs/blob/main/tests/WDL/test/wf_params.json",
-                  "type": "wf_params",
-                },
-                {
-                  "url": "https://github.com/suecharo/gh-trs/blob/main/tests/WDL/test/tiny.bam",
-                  "type": "other",
-                },
-              ],
-          },
-        ],
-    },
-}
+---
+id: 329696cd-3100-41f8-a2bf-591b023f4b57
+version: 1.0.0
+authors:
+  - github_account: suecharo
+workflow:
+  name: dockstore-tool-bamstats
+  readme: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/README.md"
+  language:
+    type: WDL
+    version: "1.0"
+  files:
+    - url: "https://raw.githubusercontent.com/suecharo/gh-trs/458d0524e667f2442a5effb730b523c1f15748d4/tests/WDL/wf/dockstore-tool-bamstats.wdl"
+      target: dockstore-tool-bamstats.wdl
+      type: primary
+  testing:
+    - id: test_1
+      files:
+        - url: "https://github.com/suecharo/gh-trs/blob/main/tests/WDL/test/wf_params.json"
+          type: wf_params
+        - url: "https://github.com/suecharo/gh-trs/blob/main/tests/WDL/test/tiny.bam"
+          type: other

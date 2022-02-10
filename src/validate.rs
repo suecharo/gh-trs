@@ -5,6 +5,7 @@ use crate::raw_url;
 
 use anyhow::{ensure, Context, Result};
 use log::{debug, info};
+use serde_yaml;
 use std::collections::{HashMap, HashSet};
 
 #[cfg(not(tarpaulin_include))]
@@ -23,7 +24,7 @@ pub fn validate(
     validate_wf_name(&config.workflow.name)?;
     validate_and_update_workflow(&gh_token, &mut config)?;
 
-    debug!("updated config:\n{:#?}", &config);
+    debug!("Updated config:\n{}", serde_yaml::to_string(&config)?);
 
     Ok(config)
 }
@@ -83,7 +84,7 @@ fn validate_and_update_workflow(
     .to_url()?;
 
     ensure!(
-        config.workflow.primary_wf_url().is_ok(),
+        config.workflow.primary_wf().is_ok(),
         "Expected one primary workflow file."
     );
 

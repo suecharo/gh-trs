@@ -194,7 +194,7 @@ pub fn test_case_to_form(
             "workflow_type_version",
             wf.language.version.clone().unwrap(),
         )
-        .text("workflow_url", wf.primary_wf_url()?.as_str().to_string())
+        .text("workflow_url", wf_url(&wf)?)
         .text(
             "workflow_engine_name",
             match wf.language.r#type.clone().unwrap() {
@@ -208,6 +208,20 @@ pub fn test_case_to_form(
         .text("workflow_engine_parameters", test_case.wf_engine_params()?)
         .text("workflow_attachment", wf_attachment(&wf, &test_case)?);
     Ok(form)
+}
+
+fn wf_url(wf: &config::Workflow) -> Result<String> {
+    let primary_wf = wf.primary_wf()?;
+    match wf.language.r#type.clone().unwrap() {
+        config::LanguageType::Nfl => {
+            let file_name = match primary_wf.target.unwrap().to_str() {
+                Some(file_name) => file_name.to_string(),
+                None => primary_wf.url.path().to_string(),
+            };
+            Ok(file_name)
+        }
+        _ => Ok(primary_wf.url.to_string()),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

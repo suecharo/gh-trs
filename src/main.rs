@@ -47,113 +47,117 @@ fn main() -> Result<()> {
             match make_template::make_template(&workflow_location, &github_token, &output) {
                 Ok(()) => info!("{} make-template", "Success".green()),
                 Err(e) => {
-                    error!("{} make-template with error: {}", "Failed".red(), e);
+                    error!("{} to make-template with error: {}", "Failed".red(), e);
                     exit(1);
                 }
             }
         }
         args::Args::Validate {
-            config_location,
+            config_locations,
             github_token,
             ..
         } => {
             info!("{} validate", "Running".green());
-            match validate::validate(&config_location, &github_token) {
+            match validate::validate(config_locations, &github_token) {
                 Ok(_) => info!("{} validate", "Success".green()),
                 Err(e) => {
-                    error!("{} validate with error: {}", "Failed".red(), e);
+                    error!("{} to validate with error: {}", "Failed".red(), e);
                     exit(1);
                 }
             };
         }
         args::Args::Test {
-            config_location,
+            config_locations,
             github_token,
             wes_location,
             docker_host,
             ..
         } => {
             info!("{} validate", "Running".green());
-            let config = match validate::validate(&config_location, &github_token) {
-                Ok(config) => {
+            let configs = match validate::validate(config_locations, &github_token) {
+                Ok(configs) => {
                     info!("{} validate", "Success".green());
-                    config
+                    configs
                 }
                 Err(e) => {
-                    error!("{} validate with error: {}", "Failed".red(), e);
+                    error!("{} to validate with error: {}", "Failed".red(), e);
                     exit(1);
                 }
             };
 
             info!("{} test", "Running".green());
-            match test::test(&config, &wes_location, &docker_host) {
-                Ok(test_results) => match test::check_test_results(&test_results) {
-                    Ok(()) => info!("{} test", "Success".green()),
-                    Err(e) => {
-                        error!("{}", e);
-                        exit(1);
-                    }
-                },
+            match test::test(&configs, &wes_location, &docker_host, false) {
+                Ok(()) => info!("{} test", "Success".green()),
                 Err(e) => {
                     match wes::stop_wes(&docker_host) {
                         Ok(_) => {}
                         Err(e) => error!("{} to stop WES with error: {}", "Failed".red(), e),
                     }
-                    error!("{} test with error: {}", "Failed".red(), e);
+                    error!("{} to test with error: {}", "Failed".red(), e);
                     exit(1);
                 }
             };
         }
         args::Args::Publish {
-            config_location,
+            config_locations,
             github_token,
             repo,
             branch,
             with_test,
             wes_location,
             docker_host,
+            from_trs,
             ..
         } => {
+            let config_locations = if from_trs {
+                info!("Run in gh-trs from_trs mode");
+                info!("TRS endpoint: {}", config_locations[0]);
+                match config_io::find_config_loc_recursively_from_trs(&config_locations[0]) {
+                    Ok(config_locs) => config_locs,
+                    Err(e) => {
+                        error!("{} to find config locs with error: {}", "Failed".red(), e);
+                        exit(1);
+                    }
+                }
+            } else {
+                config_locations
+            };
+
             info!("{} validate", "Running".green());
-            let config = match validate::validate(&config_location, &github_token) {
-                Ok(config) => {
+            let configs = match validate::validate(config_locations, &github_token) {
+                Ok(configs) => {
                     info!("{} validate", "Success".green());
-                    config
+                    configs
                 }
                 Err(e) => {
-                    error!("{} validate with error: {}", "Failed".red(), e);
+                    error!("{} to validate with error: {}", "Failed".red(), e);
                     exit(1);
                 }
             };
 
             let verified = if with_test {
                 info!("{} test", "Running".green());
-                match test::test(&config, &wes_location, &docker_host) {
-                    Ok(test_results) => {
-                        match test::check_test_results(&test_results) {
-                            Ok(()) => info!("{} test", "Success".green()),
-                            Err(e) => error!("{}", e),
-                        };
-                        true
-                    }
+                match test::test(&configs, &wes_location, &docker_host, true) {
+                    Ok(()) => info!("{} test", "Success".green()),
                     Err(e) => {
                         match wes::stop_wes(&docker_host) {
                             Ok(_) => {}
                             Err(e) => error!("{} to stop WES with error: {}", "Failed".red(), e),
                         }
-                        error!("{} test with error: {}", "Failed".red(), e);
+                        error!("{} to test with error: {}", "Failed".red(), e);
                         exit(1);
                     }
                 }
+                true
             } else {
                 false
             };
 
             info!("{} publish", "Running".green());
-            match publish::publish(&config, &github_token, &repo, &branch, verified) {
+            match publish::publish(&configs, &github_token, &repo, &branch, verified) {
                 Ok(()) => info!("{} publish", "Success".green()),
                 Err(e) => {
-                    error!("{} publish with error: {}", "Failed".red(), e);
+                    error!("{} to publish with error: {}", "Failed".red(), e);
                     exit(1);
                 }
             }

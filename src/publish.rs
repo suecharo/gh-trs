@@ -8,7 +8,7 @@ use log::info;
 
 #[cfg(not(tarpaulin_include))]
 pub fn publish(
-    config: &config::Config,
+    configs: &Vec<config::Config>,
     gh_token: &Option<impl AsRef<str>>,
     repo: impl AsRef<str>,
     branch: impl AsRef<str>,
@@ -39,32 +39,41 @@ pub fn publish(
     let branch_sha = github_api::get_branch_sha(&gh_token, &owner, &name, branch.as_ref())?;
     let latest_commit_sha =
         github_api::get_latest_commit_sha(&gh_token, &owner, &name, branch.as_ref(), None)?;
-    let trs_response = trs_response::TrsResponse::new(&config, &owner, &name, verified)?;
+    let mut trs_response = trs_response::TrsResponse::new(&owner, &name)?;
+    for config in configs {
+        trs_response.add(&owner, &name, &config, verified)?;
+    }
     let trs_contents = trs_response.generate_contents()?;
     let new_tree_sha =
         github_api::create_tree(&gh_token, &owner, &name, Some(&branch_sha), trs_contents)?;
+    let commit_message = if configs.len() == 1 {
+        format!(
+            "Publish a workflow {} version {} by gh-trs",
+            configs[0].id, configs[0].version
+        )
+    } else {
+        "Publish multiple workflows from TRS by gh-trs".to_string()
+    };
     let new_commit_sha = github_api::create_commit(
         &gh_token,
         &owner,
         &name,
         Some(&latest_commit_sha),
         &new_tree_sha,
-        format!(
-            "Add a workflow {} version {} by gh-trs.",
-            config.id, config.version
-        ),
+        &commit_message,
     )?;
     github_api::update_ref(&gh_token, &owner, &name, branch.as_ref(), &new_commit_sha)?;
 
     info!(
-        "Published to repo: {}/{} branch: {}",
+        "Published to repo: {}/{} branch: {}.",
         &owner,
         &name,
         branch.as_ref()
     );
+    info!("Please wait for GitHub Pages to be built and published.");
     info!(
-        "You can get like:\n    curl -L https://{}.github.io/{}/tools/{}/versions/{}",
-        &owner, &name, config.id, config.version
+        "You can get TRS response like:\n    curl -L https://{}.github.io/{}/tools",
+        &owner, &name
     );
 
     Ok(())

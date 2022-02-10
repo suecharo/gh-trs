@@ -67,3 +67,15 @@ $ cargo run -- publish --repo suecharo/gh-trs --with-test ./tests/test_config_NF
 # SMK
 $ cargo run -- publish --repo suecharo/gh-trs --with-test ./tests/test_config_SMK.yml
 ```
+
+### multiple files
+
+```bash
+$ cargo run -- publish --repo suecharo/gh-trs ./tests/test_config_CWL.yml ./tests/test_config_WDL.yml ./tests/test_config_NFL.yml ./tests/test_config_SMK.yml
+```
+
+### from-trs
+
+```bash
+$ cargo run -- publish --repo suecharo/gh-trs --with-test --from-trs https://suecharo.github.io/gh-trs/
+```

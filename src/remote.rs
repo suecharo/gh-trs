@@ -18,6 +18,22 @@ pub fn fetch_raw_content(remote_loc: &Url) -> Result<String> {
     Ok(response.text()?)
 }
 
+pub fn fetch_json_content(remote_loc: &Url) -> Result<String> {
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .get(remote_loc.as_str())
+        .header(reqwest::header::ACCEPT, "application/json")
+        .send()?;
+    ensure!(
+        response.status().is_success(),
+        "Failed to fetch json content from {} with status code {}",
+        remote_loc.as_str(),
+        response.status()
+    );
+
+    Ok(response.text()?)
+}
+
 #[cfg(test)]
 #[cfg(not(tarpaulin_include))]
 mod tests {

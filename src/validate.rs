@@ -10,23 +10,28 @@ use std::collections::{HashMap, HashSet};
 
 #[cfg(not(tarpaulin_include))]
 pub fn validate(
-    config_loc: impl AsRef<str>,
+    config_locs: Vec<impl AsRef<str>>,
     gh_token: &Option<impl AsRef<str>>,
-) -> Result<config::Config> {
+) -> Result<Vec<config::Config>> {
     let gh_token = env::github_token(gh_token)?;
 
-    info!("Validating config file: {}", config_loc.as_ref());
-    let mut config = config_io::read_config(config_loc.as_ref())?;
-    debug!("config:\n{:#?}", &config);
+    let mut configs = Vec::new();
 
-    validate_authors(&config.authors)?;
-    validate_language(&config.workflow.language)?;
-    validate_wf_name(&config.workflow.name)?;
-    validate_and_update_workflow(&gh_token, &mut config)?;
+    for config_loc in config_locs {
+        info!("Validating config file: {}", config_loc.as_ref());
+        let mut config = config_io::read_config(config_loc.as_ref())?;
+        debug!("config:\n{:#?}", &config);
 
-    debug!("Updated config:\n{}", serde_yaml::to_string(&config)?);
+        validate_authors(&config.authors)?;
+        validate_language(&config.workflow.language)?;
+        validate_wf_name(&config.workflow.name)?;
+        validate_and_update_workflow(&gh_token, &mut config)?;
 
-    Ok(config)
+        debug!("Updated config:\n{}", serde_yaml::to_string(&config)?);
+        configs.push(config);
+    }
+
+    Ok(configs)
 }
 
 fn validate_authors(authors: &Vec<config::Author>) -> Result<()> {

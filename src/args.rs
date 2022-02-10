@@ -16,7 +16,7 @@ pub enum Args {
         workflow_location: Url,
 
         /// GitHub Personal Access Token.
-        #[structopt(long)]
+        #[structopt(long = "gh-token")]
         github_token: Option<String>,
 
         /// Path to the output file.
@@ -30,12 +30,12 @@ pub enum Args {
 
     /// Validate the gh-trs configuration file.
     Validate {
-        /// Location of the gh-trs configuration file (local file path or remote URL).
+        /// Location of the gh-trs configuration files (local file path or remote URL).
         #[structopt(default_value = "gh-trs-config.yml")]
-        config_location: String,
+        config_locations: Vec<String>,
 
         /// GitHub Personal Access Token.
-        #[structopt(long)]
+        #[structopt(long = "gh-token")]
         github_token: Option<String>,
 
         /// Verbose mode.
@@ -45,12 +45,12 @@ pub enum Args {
 
     /// Test the workflow based on the gh-trs configuration file.
     Test {
-        /// Location of the gh-trs configuration file (local file path or remote URL).
+        /// Location of the gh-trs configuration files (local file path or remote URL).
         #[structopt(default_value = "gh-trs-config.yml")]
-        config_location: String,
+        config_locations: Vec<String>,
 
         /// GitHub Personal Access Token.
-        #[structopt(long)]
+        #[structopt(long = "gh-token")]
         github_token: Option<String>,
 
         /// Location of WES in which to run the test.
@@ -69,12 +69,12 @@ pub enum Args {
 
     /// Publish the TRS response to GitHub.
     Publish {
-        /// Location of the gh-trs configuration file (local file path or remote URL).
+        /// Location of the gh-trs configuration files (local file path or remote URL).
         #[structopt(default_value = "gh-trs-config.yml")]
-        config_location: String,
+        config_locations: Vec<String>,
 
         /// GitHub Personal Access Token.
-        #[structopt(long)]
+        #[structopt(long = "gh-token")]
         github_token: Option<String>,
 
         /// GitHub Repository to publish to. (e.g. owner/name)
@@ -97,6 +97,12 @@ pub enum Args {
         /// Location of the docker host.
         #[structopt(short, long, default_value = "unix:///var/run/docker.sock")]
         docker_host: Url,
+
+        /// Recursively get the gh-trs configuration files from the TRS endpoint and publish them.
+        /// It is mainly intended to be tested and published all at once in CI environment.
+        /// If you use this option, specify TRS endpoint for `config_location`.
+        #[structopt(long)]
+        from_trs: bool,
 
         /// Verbose mode.
         #[structopt(short, long)]
@@ -137,7 +143,7 @@ mod tests {
         assert_eq!(
             args,
             Args::Validate {
-                config_location: "gh-trs-config.yml".to_string(),
+                config_locations: vec!["gh-trs-config.yml".to_string()],
                 github_token: None,
                 verbose: false,
             }
@@ -151,7 +157,7 @@ mod tests {
         assert_eq!(
             args,
             Args::Test {
-                config_location: "gh-trs-config.yml".to_string(),
+                config_locations: vec!["gh-trs-config.yml".to_string()],
                 github_token: None,
                 wes_location: None,
                 docker_host: Url::parse("unix:///var/run/docker.sock")?,
@@ -173,13 +179,14 @@ mod tests {
         assert_eq!(
             args,
             Args::Publish {
-                config_location: "gh-trs-config.yml".to_string(),
+                config_locations: vec!["gh-trs-config.yml".to_string()],
                 repo: "suecharo/gh-trs".to_string(),
                 github_token: None,
                 branch: "gh-pages".to_string(),
                 with_test: false,
                 wes_location: None,
                 docker_host: Url::parse("unix:///var/run/docker.sock")?,
+                from_trs: false,
                 verbose: false,
             }
         );

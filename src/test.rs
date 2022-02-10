@@ -4,7 +4,7 @@ use crate::wes;
 
 use anyhow::{anyhow, bail, ensure, Result};
 use colored::Colorize;
-use log::{debug, info};
+use log::{debug, info, warn};
 use std::env as std_env;
 use std::fs;
 use std::io::{BufWriter, Write};
@@ -19,10 +19,11 @@ pub struct TestResult {
 }
 
 pub fn test(
-    config: &config::Config,
+    configs: &Vec<config::Config>,
     wes_loc: &Option<Url>,
     docker_host: &Url,
-) -> Result<Vec<TestResult>> {
+    ignore_fail: bool,
+) -> Result<()> {
     let wes_loc = match wes_loc {
         Some(wes_loc) => wes_loc.clone(),
         None => {
@@ -42,53 +43,73 @@ pub fn test(
     );
 
     let in_ci = env::in_ci();
-    let mut test_results = vec![];
-    for test_case in &config.workflow.testing {
-        info!("Testing {}", test_case.id);
-        let form = wes::test_case_to_form(&config.workflow, test_case)?;
-        debug!("Form:\n{:#?}", &form);
-        let run_id = wes::post_run(&wes_loc, form)?;
-        info!("WES run_id: {}", run_id);
-        let mut status = wes::RunStatus::Running;
-        while status == wes::RunStatus::Running {
-            status = wes::get_run_status(&wes_loc, &run_id)?;
-            debug!("WES run status: {:?}", status);
-            thread::sleep(time::Duration::from_secs(5));
-        }
-        let run_log = serde_json::to_string_pretty(&wes::get_run_log(&wes_loc, &run_id)?)?;
-        if in_ci {
-            let test_log_file =
-                std_env::current_dir()?.join(format!("test-logs/{}.log", test_case.id));
-            fs::create_dir_all(
-                test_log_file
-                    .parent()
-                    .ok_or(anyhow!("Failed to create dir"))?,
-            )?;
-            let mut buffer = BufWriter::new(fs::File::create(&test_log_file)?);
-            buffer.write(run_log.as_bytes())?;
-        }
-        match status {
-            wes::RunStatus::Complete => {
-                info!("Complete {}", test_case.id);
-                debug!("Run log:\n{}", run_log);
+    for config in configs {
+        let mut test_results = vec![];
+        for test_case in &config.workflow.testing {
+            let test_title = format!(
+                "workflow_id: {}, version: {}, test_id: {}",
+                config.id, config.version, test_case.id
+            );
+            info!("Testing {}", test_title);
+            let form = wes::test_case_to_form(&config.workflow, test_case)?;
+            debug!("Form:\n{:#?}", &form);
+            let run_id = wes::post_run(&wes_loc, form)?;
+            info!("WES run_id: {}", run_id);
+            let mut status = wes::RunStatus::Running;
+            while status == wes::RunStatus::Running {
+                status = wes::get_run_status(&wes_loc, &run_id)?;
+                debug!("WES run status: {:?}", status);
+                thread::sleep(time::Duration::from_secs(5));
             }
-            wes::RunStatus::Failed => {
-                info!("Failed {}. Run log:\n{}", test_case.id, run_log);
+            let run_log = serde_json::to_string_pretty(&wes::get_run_log(&wes_loc, &run_id)?)?;
+            if in_ci {
+                let test_log_file = std_env::current_dir()?.join(format!(
+                    "test-logs/{}_{}_{}.log",
+                    config.id, config.version, test_case.id
+                ));
+                fs::create_dir_all(
+                    test_log_file
+                        .parent()
+                        .ok_or(anyhow!("Failed to create dir"))?,
+                )?;
+                let mut buffer = BufWriter::new(fs::File::create(&test_log_file)?);
+                buffer.write(run_log.as_bytes())?;
             }
-            _ => {
-                unreachable!("WES run status: {:?}", status);
+            match status {
+                wes::RunStatus::Complete => {
+                    info!("Complete {}", test_title);
+                    debug!("Run log:\n{}", run_log);
+                }
+                wes::RunStatus::Failed => {
+                    info!("Failed {}. Run log:\n{}", test_title, run_log);
+                }
+                _ => {
+                    unreachable!("WES run status: {:?}", status);
+                }
+            }
+            test_results.push(TestResult {
+                id: test_case.id.clone(),
+                status,
+                run_log,
+            });
+        }
+        match check_test_results(&test_results) {
+            Ok(()) => {
+                info!("All tests passed");
+            }
+            Err(e) => {
+                if ignore_fail {
+                    warn!("{}, but ignore_fail is true", e);
+                } else {
+                    bail!("{}", e);
+                }
             }
         }
-        test_results.push(TestResult {
-            id: test_case.id.clone(),
-            status,
-            run_log,
-        });
     }
 
     wes::stop_wes(&docker_host)?;
 
-    Ok(test_results)
+    Ok(())
 }
 
 pub fn check_test_results(test_results: &Vec<TestResult>) -> Result<()> {

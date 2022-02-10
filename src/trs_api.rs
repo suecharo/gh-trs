@@ -21,40 +21,41 @@ fn get_request(url: &Url) -> Result<String> {
     Ok(body)
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct TrsEndpoint {
+    pub url: Url,
+}
+
+impl TrsEndpoint {
+    pub fn new_gh_pages(owner: impl AsRef<str>, name: impl AsRef<str>) -> Result<Self> {
+        let url = Url::parse(&format!(
+            "https://{}.github.io/{}/",
+            owner.as_ref(),
+            name.as_ref()
+        ))?;
+        Ok(TrsEndpoint { url })
+    }
+}
+
 /// /service-info -> trs::ServiceInfo
-pub fn get_service_info(owner: impl AsRef<str>, name: impl AsRef<str>) -> Result<trs::ServiceInfo> {
-    let url = Url::parse(&format!(
-        "https://{}.github.io/{}/service-info",
-        owner.as_ref(),
-        name.as_ref()
-    ))?;
+pub fn get_service_info(trs_endpoint: &TrsEndpoint) -> Result<trs::ServiceInfo> {
+    let url = trs_endpoint.url.join("service-info")?;
     let body = get_request(&url)?;
     let service_info: trs::ServiceInfo = serde_json::from_str(&body)?;
     Ok(service_info)
 }
 
 /// /toolClasses -> trs::ToolClass[]
-pub fn get_tool_classes(
-    owner: impl AsRef<str>,
-    name: impl AsRef<str>,
-) -> Result<Vec<trs::ToolClass>> {
-    let url = Url::parse(&format!(
-        "https://{}.github.io/{}/toolClasses",
-        owner.as_ref(),
-        name.as_ref()
-    ))?;
+pub fn get_tool_classes(trs_endpoint: &TrsEndpoint) -> Result<Vec<trs::ToolClass>> {
+    let url = trs_endpoint.url.join("toolClasses")?;
     let body = get_request(&url)?;
     let tool_classes: Vec<trs::ToolClass> = serde_json::from_str(&body)?;
     Ok(tool_classes)
 }
 
 /// /tools -> trs::Tool[]
-pub fn get_tools(owner: impl AsRef<str>, name: impl AsRef<str>) -> Result<Vec<trs::Tool>> {
-    let url = Url::parse(&format!(
-        "https://{}.github.io/{}/tools",
-        owner.as_ref(),
-        name.as_ref()
-    ))?;
+pub fn get_tools(trs_endpoint: &TrsEndpoint) -> Result<Vec<trs::Tool>> {
+    let url = trs_endpoint.url.join("tools")?;
     let body = get_request(&url)?;
     let tools: Vec<trs::Tool> = serde_json::from_str(&body)?;
     Ok(tools)

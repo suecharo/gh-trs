@@ -8,106 +8,85 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TrsResponse {
-    pub gh_trs_config: config::Config,
+    pub gh_trs_config: HashMap<(Uuid, String), config::Config>,
     pub service_info: trs::ServiceInfo,
     pub tool_classes: Vec<trs::ToolClass>,
     pub tools: Vec<trs::Tool>,
-    pub tools_id: trs::Tool,
-    pub tools_id_versions: Vec<trs::ToolVersion>,
-    pub tools_id_versions_version: trs::ToolVersion,
-    pub tools_id_versions_version_descriptor: trs::FileWrapper,
-    pub tools_id_versions_version_files: Vec<trs::ToolFile>,
-    pub tools_id_versions_version_tests: Vec<trs::FileWrapper>,
-    pub tools_id_versions_version_containerfile: Vec<trs::FileWrapper>,
+    pub tools_descriptor: HashMap<(Uuid, String), trs::FileWrapper>,
+    pub tools_files: HashMap<(Uuid, String), Vec<trs::ToolFile>>,
+    pub tools_tests: HashMap<(Uuid, String), Vec<trs::FileWrapper>>,
 }
 
 impl TrsResponse {
-    pub fn new(
-        config: &config::Config,
-        owner: impl AsRef<str>,
-        name: impl AsRef<str>,
-        verified: bool,
-    ) -> Result<Self> {
+    pub fn new(owner: impl AsRef<str>, name: impl AsRef<str>) -> Result<Self> {
+        let trs_endpoint = trs_api::TrsEndpoint::new_gh_pages(&owner, &name)?;
         let service_info = trs::ServiceInfo::new_or_update(
-            trs_api::get_service_info(&owner, &name).ok(),
-            &config,
+            trs_api::get_service_info(&trs_endpoint).ok(),
             &owner,
             &name,
         )?;
-        let tool_classes = generate_tool_classes(owner.as_ref(), name.as_ref())?;
-
-        let mut tools = match trs_api::get_tools(&owner, &name) {
+        let tool_classes = generate_tool_classes(&trs_endpoint)?;
+        let tools = match trs_api::get_tools(&trs_endpoint) {
             Ok(tools) => tools,
             Err(_) => vec![],
         };
-        let tools_id = match tools.iter().find(|t| t.id == config.id) {
+
+        Ok(Self {
+            gh_trs_config: HashMap::new(),
+            service_info,
+            tool_classes,
+            tools,
+            tools_descriptor: HashMap::new(),
+            tools_files: HashMap::new(),
+            tools_tests: HashMap::new(),
+        })
+    }
+
+    pub fn add(
+        &mut self,
+        owner: impl AsRef<str>,
+        name: impl AsRef<str>,
+        config: &config::Config,
+        verified: bool,
+    ) -> Result<()> {
+        match self.tools.iter_mut().find(|t| t.id == config.id) {
             Some(tool) => {
                 // update tool
-                let mut tool = tool.clone();
                 tool.add_new_tool_version(&config, &owner, &name, verified)?;
-                tools = tools
-                    .into_iter()
-                    .filter(|t| t.id != config.id)
-                    .collect::<Vec<trs::Tool>>();
-                tools.push(tool.clone());
-                tool
             }
             None => {
                 // create tool and add
                 let mut tool = trs::Tool::new(&config, &owner, &name)?;
                 tool.add_new_tool_version(&config, &owner, &name, verified)?;
-                tools.push(tool.clone());
-                tool
+                self.tools.push(tool);
             }
         };
-        let tools_id_versions = tools_id.versions.clone();
-        let tools_id_versions_version = tools_id_versions
-            .iter()
-            .find(|tv| tv.version() == config.version)
-            .unwrap() // already created
-            .clone();
 
-        let tools_id_versions_version_descriptor = generate_descriptor(&config)?;
-        let tools_id_versions_version_files = generate_tools_id_versions_version_files(&config)?;
-        let tools_id_versions_version_tests = generate_tools_id_versions_version_tests(&config)?;
+        self.tools_descriptor.insert(
+            (config.id, config.version.clone()),
+            generate_descriptor(&config)?,
+        );
+        self.tools_files.insert(
+            (config.id, config.version.clone()),
+            generate_files(&config)?,
+        );
+        self.tools_tests.insert(
+            (config.id, config.version.clone()),
+            generate_tests(&config)?,
+        );
 
-        Ok(Self {
-            gh_trs_config: config.clone(),
-            service_info,
-            tool_classes,
-            tools,
-            tools_id,
-            tools_id_versions,
-            tools_id_versions_version,
-            tools_id_versions_version_descriptor,
-            tools_id_versions_version_files,
-            tools_id_versions_version_tests,
-            tools_id_versions_version_containerfile: vec![],
-        })
+        self.gh_trs_config
+            .insert((config.id, config.version.clone()), config.clone());
+
+        Ok(())
     }
 
     pub fn generate_contents(&self) -> Result<HashMap<PathBuf, String>> {
-        let id = self.tools_id.id.clone();
-        let version = self.tools_id_versions_version.version().clone();
-        let descriptor_type = self
-            .gh_trs_config
-            .workflow
-            .language
-            .r#type
-            .clone()
-            .unwrap()
-            .to_string();
         let mut map: HashMap<PathBuf, String> = HashMap::new();
-        map.insert(
-            PathBuf::from(format!(
-                "tools/{}/versions/{}/gh-trs-config.json",
-                id, version
-            )),
-            serde_json::to_string(&self.gh_trs_config)?,
-        );
         map.insert(
             PathBuf::from("service-info/index.json"),
             serde_json::to_string(&self.service_info)?,
@@ -120,52 +99,82 @@ impl TrsResponse {
             PathBuf::from("tools/index.json"),
             serde_json::to_string(&self.tools)?,
         );
-        map.insert(
-            PathBuf::from(format!("tools/{}/index.json", id)),
-            serde_json::to_string(&self.tools_id)?,
-        );
-        map.insert(
-            PathBuf::from(format!("tools/{}/versions/index.json", id)),
-            serde_json::to_string(&self.tools_id_versions)?,
-        );
-        map.insert(
-            PathBuf::from(format!("tools/{}/versions/{}/index.json", id, version)),
-            serde_json::to_string(&self.tools_id_versions_version)?,
-        );
-        map.insert(
-            PathBuf::from(format!(
-                "tools/{}/versions/{}/{}/descriptor/index.json",
-                id, version, descriptor_type
-            )),
-            serde_json::to_string(&self.tools_id_versions_version_descriptor)?,
-        );
-        map.insert(
-            PathBuf::from(format!(
-                "tools/{}/versions/{}/{}/files/index.json",
-                id, version, descriptor_type
-            )),
-            serde_json::to_string(&self.tools_id_versions_version_files)?,
-        );
-        map.insert(
-            PathBuf::from(format!(
-                "tools/{}/versions/{}/{}/tests/index.json",
-                id, version, descriptor_type
-            )),
-            serde_json::to_string(&self.tools_id_versions_version_tests)?,
-        );
-        map.insert(
-            PathBuf::from(format!(
-                "tools/{}/versions/{}/containerfile/index.json",
-                id, version
-            )),
-            serde_json::to_string(&self.tools_id_versions_version_containerfile)?,
-        );
+        for ((id, version), config) in self.gh_trs_config.iter() {
+            let tools_id = self.tools.iter().find(|t| &t.id == id).unwrap();
+            let tools_id_versions = tools_id.versions.clone();
+            let tools_id_versions_version = tools_id_versions
+                .iter()
+                .find(|v| &v.version() == version)
+                .unwrap();
+            let tools_descriptor = self
+                .tools_descriptor
+                .get(&(id.clone(), version.clone()))
+                .unwrap();
+            let tools_files = self
+                .tools_files
+                .get(&(id.clone(), version.clone()))
+                .unwrap();
+            let tools_tests = self
+                .tools_tests
+                .get(&(id.clone(), version.clone()))
+                .unwrap();
+
+            let desc_type = config.workflow.language.r#type.clone().unwrap().to_string();
+
+            map.insert(
+                PathBuf::from(format!(
+                    "tools/{}/versions/{}/gh-trs-config.json",
+                    id, version
+                )),
+                serde_json::to_string(&config)?,
+            );
+            map.insert(
+                PathBuf::from(format!("tools/{}/index.json", id)),
+                serde_json::to_string(&tools_id)?,
+            );
+            map.insert(
+                PathBuf::from(format!("tools/{}/versions/index.json", id)),
+                serde_json::to_string(&tools_id_versions)?,
+            );
+            map.insert(
+                PathBuf::from(format!("tools/{}/versions/{}/index.json", id, version)),
+                serde_json::to_string(&tools_id_versions_version)?,
+            );
+            map.insert(
+                PathBuf::from(format!(
+                    "tools/{}/versions/{}/{}/descriptor/index.json",
+                    id, version, desc_type
+                )),
+                serde_json::to_string(&tools_descriptor)?,
+            );
+            map.insert(
+                PathBuf::from(format!(
+                    "tools/{}/versions/{}/{}/files/index.json",
+                    id, version, desc_type
+                )),
+                serde_json::to_string(&tools_files)?,
+            );
+            map.insert(
+                PathBuf::from(format!(
+                    "tools/{}/versions/{}/{}/tests/index.json",
+                    id, version, desc_type
+                )),
+                serde_json::to_string(&tools_tests)?,
+            );
+            map.insert(
+                PathBuf::from(format!(
+                    "tools/{}/versions/{}/containerfile/index.json",
+                    id, version
+                )),
+                serde_json::to_string(&Vec::<trs::FileWrapper>::new())?,
+            );
+        }
         Ok(map)
     }
 }
 
-fn generate_tool_classes(owner: &str, name: &str) -> Result<Vec<trs::ToolClass>> {
-    match trs_api::get_tool_classes(&owner, &name) {
+fn generate_tool_classes(trs_endpoint: &trs_api::TrsEndpoint) -> Result<Vec<trs::ToolClass>> {
+    match trs_api::get_tool_classes(&trs_endpoint) {
         Ok(mut tool_classes) => {
             let has_workflow = tool_classes
                 .iter()
@@ -195,7 +204,7 @@ fn generate_descriptor(config: &config::Config) -> Result<trs::FileWrapper> {
     })
 }
 
-fn generate_tools_id_versions_version_files(config: &config::Config) -> Result<Vec<trs::ToolFile>> {
+fn generate_files(config: &config::Config) -> Result<Vec<trs::ToolFile>> {
     Ok(config
         .workflow
         .files
@@ -214,9 +223,7 @@ fn generate_tools_id_versions_version_files(config: &config::Config) -> Result<V
         .collect())
 }
 
-fn generate_tools_id_versions_version_tests(
-    config: &config::Config,
-) -> Result<Vec<trs::FileWrapper>> {
+fn generate_tests(config: &config::Config) -> Result<Vec<trs::FileWrapper>> {
     Ok(config
         .workflow
         .testing
@@ -240,14 +247,14 @@ mod tests {
 
     #[test]
     fn test_trs_response_new() -> Result<()> {
-        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
-        TrsResponse::new(&config, "test_owner", "test_name", false)?;
+        TrsResponse::new("test_owner", "test_name")?;
         Ok(())
     }
 
     #[test]
     fn test_generate_tool_classes() -> Result<()> {
-        let tool_classes = generate_tool_classes("test_owner", "test_name")?;
+        let trs_endpoint = trs_api::TrsEndpoint::new_gh_pages("test_owner", "test_name")?;
+        let tool_classes = generate_tool_classes(&trs_endpoint)?;
         let expect = serde_json::from_str::<Vec<trs::ToolClass>>(
             r#"
 [
@@ -270,9 +277,9 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_tools_id_versions_version_files() -> Result<()> {
+    fn test_generate_files() -> Result<()> {
         let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
-        let files = generate_tools_id_versions_version_files(&config)?;
+        let files = generate_files(&config)?;
         let expect = serde_json::from_str::<Vec<trs::ToolFile>>(
             r#"
 [
@@ -308,9 +315,9 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_tools_id_versions_version_tests() -> Result<()> {
+    fn test_generate_tests() -> Result<()> {
         let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
-        let tests = generate_tools_id_versions_version_tests(&config)?;
+        let tests = generate_tests(&config)?;
         let expect = serde_json::from_str::<Vec<trs::FileWrapper>>(
             r#"
 [

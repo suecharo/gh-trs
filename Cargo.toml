@@ -1,7 +1,7 @@
 [package]
 authors = ["suecharo <suehiro619@gmail.com>"]
 categories = ["command-line-utilities"]
-description = "your own API fully based on GitHub to serve workflow metadata"
+description = "CLI tool to publish and test your own GA4GH TRS API using GitHub"
 edition = "2018"
 license = "Apache-2.0"
 name = "gh-trs"

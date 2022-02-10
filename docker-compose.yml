@@ -1,17 +1,14 @@
 version: "3.5"
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: gh-trs-dev
-    container_name: gh-trs-dev
+    image: ghcr.io/ddbj/gh-trs:0.1.1
+    container_name: gh-trs
     volumes:
-      - ${PWD}:/app
+      - ${PWD}/.env:/app/.env
+      - ${PWD}/sapporo_run:/app/sapporo_run
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - RUST_BACKTRACE=1
-      - SAPPORO_RUN_DIR=${PWD}/sapporo_run
+      - SAPPORO_RUN_DIR=${PWD}/run
     restart: on-failure
     working_dir: /app
     command: [ "sleep", "infinity" ]

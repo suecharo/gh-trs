@@ -46,13 +46,19 @@ pub fn publish(
     let trs_contents = trs_response.generate_contents()?;
     let new_tree_sha =
         github_api::create_tree(&gh_token, &owner, &name, Some(&branch_sha), trs_contents)?;
+    let in_ci = env::in_ci();
     let commit_message = if configs.len() == 1 {
         format!(
-            "Publish a workflow {} version {} by gh-trs",
-            configs[0].id, configs[0].version
+            "Publish a workflow {} version {} by gh-trs{}",
+            configs[0].id,
+            configs[0].version,
+            if in_ci { " in CI" } else { "" }
         )
     } else {
-        "Publish multiple workflows from TRS by gh-trs".to_string()
+        format!(
+            "Publish multiple workflows from TRS by gh-trs{}",
+            if in_ci { " in CI" } else { "" }
+        )
     };
     let new_commit_sha = github_api::create_commit(
         &gh_token,

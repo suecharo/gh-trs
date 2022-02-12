@@ -99,8 +99,8 @@ pub enum Args {
         docker_host: Url,
 
         /// Recursively get the gh-trs configuration files from the TRS endpoint and publish them.
-        /// It is mainly intended to be tested and published all at once in CI environment.
-        /// If you use this option, specify TRS endpoint for `config_location`.
+        /// It is mainly intended to be tested and published all at once in a CI environment.
+        /// If you use this option, specify the TRS endpoint for `config_location`.
         #[structopt(long)]
         from_trs: bool,
 

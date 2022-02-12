@@ -33,6 +33,7 @@ jobs:
       - name: "Run tests and publish"
         id: test-and-publish
         run: |
+          sleep 60s # wait for GitHub to finish pages-build-deployment action
           mkdir -p ./test-logs
           SAPPORO_RUN_DIR=${GITHUB_WORKSPACE}/test-results ./gh-trs publish --verbose --with-test --repo suecharo/gh-trs --branch gh-pages --from-trs https://suecharo.github.io/gh-trs/ 2>&1 | tee ./test-logs/gh-trs.log
           exit ${PIPESTATUS[0]}

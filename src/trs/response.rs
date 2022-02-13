@@ -1,7 +1,6 @@
 use crate::config;
 use crate::remote;
 use crate::trs;
-use crate::trs_api;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -13,24 +12,24 @@ use uuid::Uuid;
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TrsResponse {
     pub gh_trs_config: HashMap<(Uuid, String), config::types::Config>,
-    pub service_info: trs::ServiceInfo,
-    pub tool_classes: Vec<trs::ToolClass>,
-    pub tools: Vec<trs::Tool>,
-    pub tools_descriptor: HashMap<(Uuid, String), trs::FileWrapper>,
-    pub tools_files: HashMap<(Uuid, String), Vec<trs::ToolFile>>,
-    pub tools_tests: HashMap<(Uuid, String), Vec<trs::FileWrapper>>,
+    pub service_info: trs::types::ServiceInfo,
+    pub tool_classes: Vec<trs::types::ToolClass>,
+    pub tools: Vec<trs::types::Tool>,
+    pub tools_descriptor: HashMap<(Uuid, String), trs::types::FileWrapper>,
+    pub tools_files: HashMap<(Uuid, String), Vec<trs::types::ToolFile>>,
+    pub tools_tests: HashMap<(Uuid, String), Vec<trs::types::FileWrapper>>,
 }
 
 impl TrsResponse {
     pub fn new(owner: impl AsRef<str>, name: impl AsRef<str>) -> Result<Self> {
-        let trs_endpoint = trs_api::TrsEndpoint::new_gh_pages(&owner, &name)?;
-        let service_info = trs::ServiceInfo::new_or_update(
-            trs_api::get_service_info(&trs_endpoint).ok(),
+        let trs_endpoint = trs::api::TrsEndpoint::new_gh_pages(&owner, &name)?;
+        let service_info = trs::types::ServiceInfo::new_or_update(
+            trs::api::get_service_info(&trs_endpoint).ok(),
             &owner,
             &name,
         )?;
         let tool_classes = generate_tool_classes(&trs_endpoint)?;
-        let tools = match trs_api::get_tools(&trs_endpoint) {
+        let tools = match trs::api::get_tools(&trs_endpoint) {
             Ok(tools) => tools,
             Err(_) => vec![],
         };
@@ -60,7 +59,7 @@ impl TrsResponse {
             }
             None => {
                 // create tool and add
-                let mut tool = trs::Tool::new(&config, &owner, &name)?;
+                let mut tool = trs::types::Tool::new(&config, &owner, &name)?;
                 tool.add_new_tool_version(&config, &owner, &name, verified)?;
                 self.tools.push(tool);
             }
@@ -166,73 +165,75 @@ impl TrsResponse {
                     "tools/{}/versions/{}/containerfile/index.json",
                     id, version
                 )),
-                serde_json::to_string(&Vec::<trs::FileWrapper>::new())?,
+                serde_json::to_string(&Vec::<trs::types::FileWrapper>::new())?,
             );
         }
         Ok(map)
     }
 }
 
-pub fn generate_tool_classes(trs_endpoint: &trs_api::TrsEndpoint) -> Result<Vec<trs::ToolClass>> {
-    match trs_api::get_tool_classes(&trs_endpoint) {
+pub fn generate_tool_classes(
+    trs_endpoint: &trs::api::TrsEndpoint,
+) -> Result<Vec<trs::types::ToolClass>> {
+    match trs::api::get_tool_classes(&trs_endpoint) {
         Ok(mut tool_classes) => {
             let has_workflow = tool_classes
                 .iter()
                 .find(|tc| tc.id == Some("workflow".to_string()));
             if has_workflow.is_none() {
-                tool_classes.push(trs::ToolClass::default());
+                tool_classes.push(trs::types::ToolClass::default());
             };
             Ok(tool_classes)
         }
-        Err(_) => Ok(vec![trs::ToolClass::default()]),
+        Err(_) => Ok(vec![trs::types::ToolClass::default()]),
     }
 }
 
-pub fn generate_descriptor(config: &config::types::Config) -> Result<trs::FileWrapper> {
+pub fn generate_descriptor(config: &config::types::Config) -> Result<trs::types::FileWrapper> {
     let primary_wf = config.workflow.primary_wf()?;
     let (content, checksum) = match remote::fetch_raw_content(&primary_wf.url) {
         Ok(content) => {
-            let checksum = trs::Checksum::new_from_string(content.clone());
+            let checksum = trs::types::Checksum::new_from_string(content.clone());
             (Some(content), Some(vec![checksum]))
         }
         Err(_) => (None, None),
     };
-    Ok(trs::FileWrapper {
+    Ok(trs::types::FileWrapper {
         content,
         checksum,
         url: Some(primary_wf.url),
     })
 }
 
-pub fn generate_files(config: &config::types::Config) -> Result<Vec<trs::ToolFile>> {
+pub fn generate_files(config: &config::types::Config) -> Result<Vec<trs::types::ToolFile>> {
     Ok(config
         .workflow
         .files
         .iter()
         .map(|f| {
-            let checksum = match trs::Checksum::new_from_url(&f.url) {
+            let checksum = match trs::types::Checksum::new_from_url(&f.url) {
                 Ok(checksum) => Some(checksum),
                 Err(_) => None,
             };
-            trs::ToolFile {
+            trs::types::ToolFile {
                 path: Some(f.url.clone()),
-                file_type: Some(trs::FileType::new_from_file_type(&f.r#type)),
+                file_type: Some(trs::types::FileType::new_from_file_type(&f.r#type)),
                 checksum,
             }
         })
         .collect())
 }
 
-pub fn generate_tests(config: &config::types::Config) -> Result<Vec<trs::FileWrapper>> {
+pub fn generate_tests(config: &config::types::Config) -> Result<Vec<trs::types::FileWrapper>> {
     Ok(config
         .workflow
         .testing
         .iter()
         .map(|t| {
             let test_str = serde_json::to_string(&t)?;
-            Ok(trs::FileWrapper {
+            Ok(trs::types::FileWrapper {
                 content: Some(test_str.clone()),
-                checksum: Some(vec![trs::Checksum::new_from_string(test_str)]),
+                checksum: Some(vec![trs::types::Checksum::new_from_string(test_str)]),
                 url: None,
             })
         })
@@ -253,9 +254,9 @@ mod tests {
 
     #[test]
     fn test_generate_tool_classes() -> Result<()> {
-        let trs_endpoint = trs_api::TrsEndpoint::new_gh_pages("test_owner", "test_name")?;
+        let trs_endpoint = trs::api::TrsEndpoint::new_gh_pages("test_owner", "test_name")?;
         let tool_classes = generate_tool_classes(&trs_endpoint)?;
-        let expect = serde_json::from_str::<Vec<trs::ToolClass>>(
+        let expect = serde_json::from_str::<Vec<trs::types::ToolClass>>(
             r#"
 [
   {
@@ -280,7 +281,7 @@ mod tests {
     fn test_generate_files() -> Result<()> {
         let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         let files = generate_files(&config)?;
-        let expect = serde_json::from_str::<Vec<trs::ToolFile>>(
+        let expect = serde_json::from_str::<Vec<trs::types::ToolFile>>(
             r#"
 [
   {
@@ -317,7 +318,7 @@ mod tests {
     fn test_generate_tests() -> Result<()> {
         let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         let tests = generate_tests(&config)?;
-        let expect = serde_json::from_str::<Vec<trs::FileWrapper>>(
+        let expect = serde_json::from_str::<Vec<trs::types::FileWrapper>>(
             r#"
 [
   {

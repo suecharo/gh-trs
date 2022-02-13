@@ -8,6 +8,4 @@ pub mod logger;
 pub mod raw_url;
 pub mod remote;
 pub mod trs;
-pub mod trs_api;
-pub mod trs_response;
 pub mod wes;

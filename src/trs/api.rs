@@ -37,27 +37,27 @@ impl TrsEndpoint {
     }
 }
 
-/// /service-info -> trs::ServiceInfo
-pub fn get_service_info(trs_endpoint: &TrsEndpoint) -> Result<trs::ServiceInfo> {
+/// /service-info -> trs::types::ServiceInfo
+pub fn get_service_info(trs_endpoint: &TrsEndpoint) -> Result<trs::types::ServiceInfo> {
     let url = trs_endpoint.url.join("service-info")?;
     let body = get_request(&url)?;
-    let service_info: trs::ServiceInfo = serde_json::from_str(&body)?;
+    let service_info: trs::types::ServiceInfo = serde_json::from_str(&body)?;
     Ok(service_info)
 }
 
-/// /toolClasses -> trs::ToolClass[]
-pub fn get_tool_classes(trs_endpoint: &TrsEndpoint) -> Result<Vec<trs::ToolClass>> {
+/// /toolClasses -> trs::types::ToolClass[]
+pub fn get_tool_classes(trs_endpoint: &TrsEndpoint) -> Result<Vec<trs::types::ToolClass>> {
     let url = trs_endpoint.url.join("toolClasses")?;
     let body = get_request(&url)?;
-    let tool_classes: Vec<trs::ToolClass> = serde_json::from_str(&body)?;
+    let tool_classes: Vec<trs::types::ToolClass> = serde_json::from_str(&body)?;
     Ok(tool_classes)
 }
 
-/// /tools -> trs::Tool[]
-pub fn get_tools(trs_endpoint: &TrsEndpoint) -> Result<Vec<trs::Tool>> {
+/// /tools -> trs::types::Tool[]
+pub fn get_tools(trs_endpoint: &TrsEndpoint) -> Result<Vec<trs::types::Tool>> {
     let url = trs_endpoint.url.join("tools")?;
     let body = get_request(&url)?;
-    let tools: Vec<trs::Tool> = serde_json::from_str(&body)?;
+    let tools: Vec<trs::types::Tool> = serde_json::from_str(&body)?;
     Ok(tools)
 }
 

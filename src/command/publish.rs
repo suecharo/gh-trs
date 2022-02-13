@@ -1,7 +1,7 @@
 use crate::config;
 use crate::env;
 use crate::github_api;
-use crate::trs_response;
+use crate::trs;
 
 use anyhow::{anyhow, Result};
 use log::info;
@@ -39,7 +39,7 @@ pub fn publish(
     let branch_sha = github_api::get_branch_sha(&gh_token, &owner, &name, branch.as_ref())?;
     let latest_commit_sha =
         github_api::get_latest_commit_sha(&gh_token, &owner, &name, branch.as_ref(), None)?;
-    let mut trs_response = trs_response::TrsResponse::new(&owner, &name)?;
+    let mut trs_response = trs::response::TrsResponse::new(&owner, &name)?;
     for config in configs {
         trs_response.add(&owner, &name, &config, verified)?;
     }

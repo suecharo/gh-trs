@@ -1,6 +1,6 @@
 use crate::config;
 use crate::remote;
-use crate::trs_api;
+use crate::trs;
 
 use anyhow::{bail, ensure, Result};
 use log::debug;
@@ -67,15 +67,15 @@ pub fn find_config_loc_recursively_from_trs(trs_loc: impl AsRef<str>) -> Result<
     } else {
         format!("{}/", trs_loc.as_ref())
     };
-    let trs_endpoint = trs_api::TrsEndpoint {
+    let trs_endpoint = trs::api::TrsEndpoint {
         url: Url::parse(&trs_loc)?,
     };
-    let service_info = trs_api::get_service_info(&trs_endpoint)?;
+    let service_info = trs::api::get_service_info(&trs_endpoint)?;
     ensure!(
         service_info.r#type.artifact == "gh-trs" && service_info.r#type.version == "2.0.1",
         "gh-trs only supports gh-trs 2.0.1 as a TRS endpoint"
     );
-    let config_locs: Vec<String> = trs_api::get_tools(&trs_endpoint)?
+    let config_locs: Vec<String> = trs::api::get_tools(&trs_endpoint)?
         .into_iter()
         .flat_map(|tool| tool.versions)
         .map(|version| version.url)

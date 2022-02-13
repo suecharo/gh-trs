@@ -1,9 +1,10 @@
 name: ci-workflows
 
 on:
-  push:
-    branches:
-      - gh-pages
+  deployment: {}
+  # push:
+  #   branches:
+  #     - gh-pages
   workflow_dispatch: {}
   # schedule:
   #   - cron: "0 0 * * 0" // every Sunday at midnight
@@ -17,6 +18,7 @@ jobs:
       - name: "Download gh-trs binary from artifact"
         id: download-binary-artifact
         run: |
+          echo {{ github.event.head_commit.message }}
           RUN_ID=`gh run --repo suecharo/gh-trs list --workflow build_binary --json databaseId --jq .[0].databaseId`
           gh run --repo suecharo/gh-trs download ${RUN_ID} -n gh-trs
           chmod +x gh-trs

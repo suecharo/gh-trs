@@ -7,8 +7,8 @@ LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.description="CLI tool to publish and test your own GA4GH TRS API using GitHub"
 LABEL org.opencontainers.image.licenses="Apache2.0"
 
-ADD https://github.com/suecharo/gh-trs/releases/latest/download/yevis /usr/bin/
-RUN chmod +x /usr/bin/yevis
+ADD https://github.com/suecharo/gh-trs/releases/latest/download/gh-trs /usr/bin/
+RUN chmod +x /usr/bin/gh-trs
 
 WORKDIR /app
 

@@ -44,6 +44,34 @@ jobs:
           name: gh-trs
           path: target/x86_64-unknown-linux-musl/release/gh-trs
 
+  publish_crate:
+    runs-on: ubuntu-latest
+    needs: [build_binary]
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: "Install Rust"
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: "Cache Rust"
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: "Publish crate"
+        run: cargo publish --allow-dirty --token ${{ secrets.CRATE_TOKEN }}
+        env:
+          CRATE_TOKEN: ${{ secrets.CRATE_TOKEN }}
+
   create_release:
     needs: [build_binary]
     runs-on: ubuntu-latest

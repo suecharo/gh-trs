@@ -71,7 +71,7 @@ pub fn publish(
     github_api::update_ref(&gh_token, &owner, &name, branch.as_ref(), &new_commit_sha)?;
 
     info!(
-        "Published to repo: {}/{} branch: {}.",
+        "Published to repo: {}/{} branch: {}",
         &owner,
         &name,
         branch.as_ref()

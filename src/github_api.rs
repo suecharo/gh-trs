@@ -18,7 +18,7 @@ pub fn parse_repo(repo: impl AsRef<str>) -> Result<(String, String)> {
     Ok((parts[0].to_string(), parts[1].to_string()))
 }
 
-fn get_request(gh_token: impl AsRef<str>, url: &Url, query: &[(&str, &str)]) -> Result<Value> {
+pub fn get_request(gh_token: impl AsRef<str>, url: &Url, query: &[(&str, &str)]) -> Result<Value> {
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(url.as_str())
@@ -48,7 +48,7 @@ fn get_request(gh_token: impl AsRef<str>, url: &Url, query: &[(&str, &str)]) -> 
     Ok(res_body)
 }
 
-fn post_request(gh_token: impl AsRef<str>, url: &Url, body: &Value) -> Result<Value> {
+pub fn post_request(gh_token: impl AsRef<str>, url: &Url, body: &Value) -> Result<Value> {
     let client = reqwest::blocking::Client::new();
     let response = client
         .post(url.as_str())
@@ -78,7 +78,7 @@ fn post_request(gh_token: impl AsRef<str>, url: &Url, body: &Value) -> Result<Va
     Ok(res_body)
 }
 
-fn patch_request(gh_token: impl AsRef<str>, url: &Url, body: &Value) -> Result<Value> {
+pub fn patch_request(gh_token: impl AsRef<str>, url: &Url, body: &Value) -> Result<Value> {
     let client = reqwest::blocking::Client::new();
     let response = client
         .patch(url.as_str())
@@ -160,7 +160,7 @@ pub fn get_default_branch(
 }
 
 /// https://docs.github.com/ja/rest/reference/branches#get-a-branch
-fn get_branches(
+pub fn get_branches(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
@@ -223,7 +223,7 @@ pub fn get_latest_commit_sha(
 }
 
 /// https://docs.github.com/ja/rest/reference/users#get-a-user
-fn get_user(gh_token: impl AsRef<str>) -> Result<Value> {
+pub fn get_user(gh_token: impl AsRef<str>) -> Result<Value> {
     let url = Url::parse("https://api.github.com/user")?;
     get_request(gh_token, &url, &[])
 }
@@ -274,7 +274,7 @@ pub fn get_readme_url(
 }
 
 /// https://docs.github.com/ja/rest/reference/repos#get-repository-content
-fn get_contents(
+pub fn get_contents(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
@@ -356,7 +356,7 @@ pub fn exists_branch(
 }
 
 /// https://docs.github.com/en/rest/reference/git#get-a-reference
-fn get_ref(
+pub fn get_ref(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,
@@ -395,7 +395,7 @@ pub fn get_branch_sha(
 }
 
 /// https://docs.github.com/en/rest/reference/git#create-a-reference
-fn create_ref(
+pub fn create_ref(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,
     name: impl AsRef<str>,

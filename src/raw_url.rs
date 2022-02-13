@@ -144,7 +144,7 @@ impl RawUrl {
 }
 
 /// Check if input is a valid commit SHA.
-fn is_commit_hash(hash: impl AsRef<str>) -> Result<()> {
+pub fn is_commit_hash(hash: impl AsRef<str>) -> Result<()> {
     let re = Regex::new(r"^[0-9a-f]{40}$")?;
     ensure!(
         re.is_match(hash.as_ref()),

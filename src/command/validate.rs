@@ -1,5 +1,4 @@
 use crate::config;
-use crate::config_io;
 use crate::env;
 use crate::raw_url;
 
@@ -12,14 +11,14 @@ use std::collections::{HashMap, HashSet};
 pub fn validate(
     config_locs: Vec<impl AsRef<str>>,
     gh_token: &Option<impl AsRef<str>>,
-) -> Result<Vec<config::Config>> {
+) -> Result<Vec<config::types::Config>> {
     let gh_token = env::github_token(gh_token)?;
 
     let mut configs = Vec::new();
 
     for config_loc in config_locs {
         info!("Validating config file: {}", config_loc.as_ref());
-        let mut config = config_io::read_config(config_loc.as_ref())?;
+        let mut config = config::io::read_config(config_loc.as_ref())?;
         debug!("config:\n{:#?}", &config);
 
         validate_authors(&config.authors)?;
@@ -34,7 +33,7 @@ pub fn validate(
     Ok(configs)
 }
 
-fn validate_authors(authors: &Vec<config::Author>) -> Result<()> {
+pub fn validate_authors(authors: &Vec<config::types::Author>) -> Result<()> {
     ensure!(authors.len() > 0, "No authors found in config file");
     ensure!(
         authors.len()
@@ -48,7 +47,7 @@ fn validate_authors(authors: &Vec<config::Author>) -> Result<()> {
     Ok(())
 }
 
-fn validate_language(language: &config::Language) -> Result<()> {
+pub fn validate_language(language: &config::types::Language) -> Result<()> {
     ensure!(
         language.r#type.is_some(),
         "Language type not specified in config file"
@@ -60,7 +59,7 @@ fn validate_language(language: &config::Language) -> Result<()> {
     Ok(())
 }
 
-fn validate_wf_name(wf_name: impl AsRef<str>) -> Result<()> {
+pub fn validate_wf_name(wf_name: impl AsRef<str>) -> Result<()> {
     ensure!(
         wf_name
             .as_ref()
@@ -72,9 +71,9 @@ fn validate_wf_name(wf_name: impl AsRef<str>) -> Result<()> {
     Ok(())
 }
 
-fn validate_and_update_workflow(
+pub fn validate_and_update_workflow(
     gh_token: &impl AsRef<str>,
-    config: &mut config::Config,
+    config: &mut config::types::Config,
 ) -> Result<()> {
     let mut branch_memo = HashMap::new();
     let mut commit_memo = HashMap::new();

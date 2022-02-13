@@ -80,17 +80,3 @@ pub fn find_config_loc_recursively_from_trs(trs_loc: impl AsRef<str>) -> Result<
     debug!("Found config locations: {:?}", config_locs);
     Ok(config_locs)
 }
-
-#[cfg(test)]
-#[cfg(not(tarpaulin_include))]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_find_config_loc_recursively_from_trs() -> Result<()> {
-        let config_locs =
-            find_config_loc_recursively_from_trs("https://suecharo.github.io/gh-trs")?;
-        assert!(config_locs.len() > 1);
-        Ok(())
-    }
-}

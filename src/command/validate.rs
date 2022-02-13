@@ -33,7 +33,7 @@ pub fn validate(
     Ok(configs)
 }
 
-fn validate_authors(authors: &Vec<config::types::Author>) -> Result<()> {
+pub fn validate_authors(authors: &Vec<config::types::Author>) -> Result<()> {
     ensure!(authors.len() > 0, "No authors found in config file");
     ensure!(
         authors.len()
@@ -47,7 +47,7 @@ fn validate_authors(authors: &Vec<config::types::Author>) -> Result<()> {
     Ok(())
 }
 
-fn validate_language(language: &config::types::Language) -> Result<()> {
+pub fn validate_language(language: &config::types::Language) -> Result<()> {
     ensure!(
         language.r#type.is_some(),
         "Language type not specified in config file"
@@ -59,7 +59,7 @@ fn validate_language(language: &config::types::Language) -> Result<()> {
     Ok(())
 }
 
-fn validate_wf_name(wf_name: impl AsRef<str>) -> Result<()> {
+pub fn validate_wf_name(wf_name: impl AsRef<str>) -> Result<()> {
     ensure!(
         wf_name
             .as_ref()
@@ -71,7 +71,7 @@ fn validate_wf_name(wf_name: impl AsRef<str>) -> Result<()> {
     Ok(())
 }
 
-fn validate_and_update_workflow(
+pub fn validate_and_update_workflow(
     gh_token: &impl AsRef<str>,
     config: &mut config::types::Config,
 ) -> Result<()> {

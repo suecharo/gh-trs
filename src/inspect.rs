@@ -18,7 +18,7 @@ pub fn inspect_wf_type_version(wf_loc: &Url) -> Result<config::types::Language> 
     })
 }
 
-fn inspect_wf_type(wf_content: impl AsRef<str>) -> Option<config::types::LanguageType> {
+pub fn inspect_wf_type(wf_content: impl AsRef<str>) -> Option<config::types::LanguageType> {
     match check_by_shebang(&wf_content) {
         Some(lang) => Some(lang),
         None => match check_by_regexp(&wf_content) {
@@ -31,7 +31,7 @@ fn inspect_wf_type(wf_content: impl AsRef<str>) -> Option<config::types::Languag
     }
 }
 
-fn check_by_shebang(wf_content: impl AsRef<str>) -> Option<config::types::LanguageType> {
+pub fn check_by_shebang(wf_content: impl AsRef<str>) -> Option<config::types::LanguageType> {
     let first_line = wf_content.as_ref().lines().next().unwrap_or("");
     if first_line.starts_with("#!") {
         if first_line.contains("cwl") {
@@ -47,7 +47,7 @@ fn check_by_shebang(wf_content: impl AsRef<str>) -> Option<config::types::Langua
     None
 }
 
-fn check_by_regexp(wf_content: impl AsRef<str>) -> Result<Option<config::types::LanguageType>> {
+pub fn check_by_regexp(wf_content: impl AsRef<str>) -> Result<Option<config::types::LanguageType>> {
     let pattern_wdl = Regex::new(r"^(workflow|task) \w* \{$")?;
     let pattern_nfl = Regex::new(r"^process \w* \{$")?;
     let pattern_smk = Regex::new(r"^rule \w*:$")?;
@@ -103,7 +103,7 @@ pub fn inspect_wf_version(
 }
 
 /// https://www.commonwl.org/v1.2/CommandLineTool.html#CWLVersion
-fn inspect_cwl_version(wf_content: impl AsRef<str>) -> Result<String> {
+pub fn inspect_cwl_version(wf_content: impl AsRef<str>) -> Result<String> {
     let cwl_docs: BTreeMap<String, serde_yaml::Value> = serde_yaml::from_str(wf_content.as_ref())?;
     match cwl_docs.contains_key("cwlVersion") {
         true => match cwl_docs
@@ -117,7 +117,7 @@ fn inspect_cwl_version(wf_content: impl AsRef<str>) -> Result<String> {
     }
 }
 
-fn inspect_wdl_version(wf_content: impl AsRef<str>) -> Result<String> {
+pub fn inspect_wdl_version(wf_content: impl AsRef<str>) -> Result<String> {
     let pattern_wdl_version = Regex::new(r"^version \d\.\d$")?;
     for line in wf_content.as_ref().lines() {
         if pattern_wdl_version.is_match(line) {
@@ -128,7 +128,7 @@ fn inspect_wdl_version(wf_content: impl AsRef<str>) -> Result<String> {
     Ok("1.0".to_string())
 }
 
-fn inspect_nfl_version(wf_content: impl AsRef<str>) -> Result<String> {
+pub fn inspect_nfl_version(wf_content: impl AsRef<str>) -> Result<String> {
     for line in wf_content.as_ref().lines() {
         if line == "nextflow.enable.dsl=2" {
             return Ok("DSL2".to_string());
@@ -137,7 +137,7 @@ fn inspect_nfl_version(wf_content: impl AsRef<str>) -> Result<String> {
     Ok("1.0".to_string())
 }
 
-fn inspect_smk_version(_wf_content: impl AsRef<str>) -> Result<String> {
+pub fn inspect_smk_version(_wf_content: impl AsRef<str>) -> Result<String> {
     Ok("1.0".to_string())
 }
 

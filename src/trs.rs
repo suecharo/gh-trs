@@ -29,7 +29,7 @@ pub struct ServiceInfo {
     pub version: String,
 }
 
-fn serialize_date_time<S>(dt: &Option<DateTime<Utc>>, serializer: S) -> Result<S::Ok, S::Error>
+pub fn serialize_date_time<S>(dt: &Option<DateTime<Utc>>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {

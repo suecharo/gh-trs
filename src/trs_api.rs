@@ -4,7 +4,7 @@ use anyhow::{ensure, Result};
 use reqwest;
 use url::Url;
 
-fn get_request(url: &Url) -> Result<String> {
+pub fn get_request(url: &Url) -> Result<String> {
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(url.as_str())

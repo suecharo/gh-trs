@@ -173,7 +173,7 @@ impl TrsResponse {
     }
 }
 
-fn generate_tool_classes(trs_endpoint: &trs_api::TrsEndpoint) -> Result<Vec<trs::ToolClass>> {
+pub fn generate_tool_classes(trs_endpoint: &trs_api::TrsEndpoint) -> Result<Vec<trs::ToolClass>> {
     match trs_api::get_tool_classes(&trs_endpoint) {
         Ok(mut tool_classes) => {
             let has_workflow = tool_classes
@@ -188,7 +188,7 @@ fn generate_tool_classes(trs_endpoint: &trs_api::TrsEndpoint) -> Result<Vec<trs:
     }
 }
 
-fn generate_descriptor(config: &config::types::Config) -> Result<trs::FileWrapper> {
+pub fn generate_descriptor(config: &config::types::Config) -> Result<trs::FileWrapper> {
     let primary_wf = config.workflow.primary_wf()?;
     let (content, checksum) = match remote::fetch_raw_content(&primary_wf.url) {
         Ok(content) => {
@@ -204,7 +204,7 @@ fn generate_descriptor(config: &config::types::Config) -> Result<trs::FileWrappe
     })
 }
 
-fn generate_files(config: &config::types::Config) -> Result<Vec<trs::ToolFile>> {
+pub fn generate_files(config: &config::types::Config) -> Result<Vec<trs::ToolFile>> {
     Ok(config
         .workflow
         .files
@@ -223,7 +223,7 @@ fn generate_files(config: &config::types::Config) -> Result<Vec<trs::ToolFile>> 
         .collect())
 }
 
-fn generate_tests(config: &config::types::Config) -> Result<Vec<trs::FileWrapper>> {
+pub fn generate_tests(config: &config::types::Config) -> Result<Vec<trs::FileWrapper>> {
     Ok(config
         .workflow
         .testing

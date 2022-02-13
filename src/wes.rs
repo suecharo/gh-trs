@@ -122,7 +122,7 @@ pub fn stop_wes(docker_host: &Url) -> Result<()> {
     Ok(())
 }
 
-fn check_wes_running(docker_host: &Url) -> Result<bool> {
+pub fn check_wes_running(docker_host: &Url) -> Result<bool> {
     let process = Command::new("docker")
         .args(&[
             "-H",
@@ -210,7 +210,7 @@ pub fn test_case_to_form(
     Ok(form)
 }
 
-fn wf_url(wf: &config::types::Workflow) -> Result<String> {
+pub fn wf_url(wf: &config::types::Workflow) -> Result<String> {
     let primary_wf = wf.primary_wf()?;
     match wf.language.r#type.clone().unwrap() {
         config::types::LanguageType::Nfl => {
@@ -246,7 +246,7 @@ impl AttachedFile {
     }
 }
 
-fn wf_attachment(
+pub fn wf_attachment(
     wf: &config::types::Workflow,
     test_case: &config::types::Testing,
 ) -> Result<String> {

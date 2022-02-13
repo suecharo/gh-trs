@@ -28,7 +28,11 @@ fn main() -> Result<()> {
             ..
         } => {
             info!("{} make-template", "Running".green());
-            match gh_trs::make_template::make_template(&workflow_location, &github_token, &output) {
+            match gh_trs::command::make_template::make_template(
+                &workflow_location,
+                &github_token,
+                &output,
+            ) {
                 Ok(()) => info!("{} make-template", "Success".green()),
                 Err(e) => {
                     error!("{} to make-template with error: {}", "Failed".red(), e);
@@ -42,7 +46,7 @@ fn main() -> Result<()> {
             ..
         } => {
             info!("{} validate", "Running".green());
-            match gh_trs::validate::validate(config_locations, &github_token) {
+            match gh_trs::command::validate::validate(config_locations, &github_token) {
                 Ok(_) => info!("{} validate", "Success".green()),
                 Err(e) => {
                     error!("{} to validate with error: {}", "Failed".red(), e);
@@ -58,7 +62,8 @@ fn main() -> Result<()> {
             ..
         } => {
             info!("{} validate", "Running".green());
-            let configs = match gh_trs::validate::validate(config_locations, &github_token) {
+            let configs = match gh_trs::command::validate::validate(config_locations, &github_token)
+            {
                 Ok(configs) => {
                     info!("{} validate", "Success".green());
                     configs
@@ -70,7 +75,7 @@ fn main() -> Result<()> {
             };
 
             info!("{} test", "Running".green());
-            match gh_trs::test::test(&configs, &wes_location, &docker_host, false) {
+            match gh_trs::command::test::test(&configs, &wes_location, &docker_host, false) {
                 Ok(()) => info!("{} test", "Success".green()),
                 Err(e) => {
                     match gh_trs::wes::stop_wes(&docker_host) {
@@ -109,7 +114,8 @@ fn main() -> Result<()> {
             };
 
             info!("{} validate", "Running".green());
-            let configs = match gh_trs::validate::validate(config_locations, &github_token) {
+            let configs = match gh_trs::command::validate::validate(config_locations, &github_token)
+            {
                 Ok(configs) => {
                     info!("{} validate", "Success".green());
                     configs
@@ -122,7 +128,7 @@ fn main() -> Result<()> {
 
             let verified = if with_test {
                 info!("{} test", "Running".green());
-                match gh_trs::test::test(&configs, &wes_location, &docker_host, true) {
+                match gh_trs::command::test::test(&configs, &wes_location, &docker_host, true) {
                     Ok(()) => info!("{} test", "Success".green()),
                     Err(e) => {
                         match gh_trs::wes::stop_wes(&docker_host) {
@@ -139,7 +145,13 @@ fn main() -> Result<()> {
             };
 
             info!("{} publish", "Running".green());
-            match gh_trs::publish::publish(&configs, &github_token, &repo, &branch, verified) {
+            match gh_trs::command::publish::publish(
+                &configs,
+                &github_token,
+                &repo,
+                &branch,
+                verified,
+            ) {
                 Ok(()) => info!("{} publish", "Success".green()),
                 Err(e) => {
                     error!("{} to publish with error: {}", "Failed".red(), e);

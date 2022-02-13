@@ -8,7 +8,7 @@ use log::info;
 
 #[cfg(not(tarpaulin_include))]
 pub fn publish(
-    configs: &Vec<config::Config>,
+    configs: &Vec<config::types::Config>,
     gh_token: &Option<impl AsRef<str>>,
     repo: impl AsRef<str>,
     branch: impl AsRef<str>,

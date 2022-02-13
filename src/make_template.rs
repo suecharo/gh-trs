@@ -1,5 +1,4 @@
 use crate::config;
-use crate::config_io;
 use crate::env;
 use crate::github_api;
 use crate::inspect;
@@ -27,8 +26,8 @@ pub fn make_template(
 
     let wf_id = Uuid::new_v4();
     let wf_version = "1.0.0".to_string();
-    let author = config::Author {
-        github_account: config::Author::new_from_api(&gh_token)?.github_account,
+    let author = config::types::Author {
+        github_account: config::types::Author::new_from_api(&gh_token)?.github_account,
         name: None,
         affiliation: None,
         orcid: None,
@@ -43,14 +42,14 @@ pub fn make_template(
     .to_url()?;
     let language = inspect::inspect_wf_type_version(&primary_wf.to_url()?)?;
     let files = obtain_wf_files(&gh_token, &primary_wf)?;
-    let testing = vec![config::Testing::default()];
+    let testing = vec![config::types::Testing::default()];
 
-    let config = config::Config {
+    let config = config::types::Config {
         id: wf_id,
         version: wf_version,
         license: None,
         authors: vec![author],
-        workflow: config::Workflow {
+        workflow: config::types::Workflow {
             name: wf_name,
             readme,
             language,
@@ -60,8 +59,8 @@ pub fn make_template(
     };
     debug!("config:\n{:#?}", config);
 
-    let file_ext = config_io::parse_file_ext(&output)?;
-    config_io::write_config(&config, &output, &file_ext)?;
+    let file_ext = config::io::parse_file_ext(&output)?;
+    config::io::write_config(&config, &output, &file_ext)?;
 
     Ok(())
 }
@@ -69,7 +68,7 @@ pub fn make_template(
 fn obtain_wf_files(
     gh_token: impl AsRef<str>,
     primary_wf: &raw_url::RawUrl,
-) -> Result<Vec<config::File>> {
+) -> Result<Vec<config::types::File>> {
     let primary_wf_url = primary_wf.to_url()?;
     let base_dir = primary_wf.base_dir()?;
     let base_url = primary_wf.to_base_url()?;
@@ -82,15 +81,15 @@ fn obtain_wf_files(
     )?;
     Ok(files
         .into_iter()
-        .map(|file| -> Result<config::File> {
+        .map(|file| -> Result<config::types::File> {
             let target = file.strip_prefix(&base_dir)?;
             let url = base_url.join(target.to_str().ok_or(anyhow!("Invalid URL"))?)?;
             let r#type = if url == primary_wf_url {
-                config::FileType::Primary
+                config::types::FileType::Primary
             } else {
-                config::FileType::Secondary
+                config::types::FileType::Secondary
             };
-            Ok(config::File::new(&url, &Some(target), r#type)?)
+            Ok(config::types::File::new(&url, &Some(target), r#type)?)
         })
         .collect::<Result<Vec<_>>>()?)
 }

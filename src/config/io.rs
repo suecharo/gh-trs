@@ -30,7 +30,11 @@ pub fn parse_file_ext(path: impl AsRef<Path>) -> Result<FileExt> {
     }
 }
 
-pub fn write_config(config: &config::Config, path: impl AsRef<Path>, ext: &FileExt) -> Result<()> {
+pub fn write_config(
+    config: &config::types::Config,
+    path: impl AsRef<Path>,
+    ext: &FileExt,
+) -> Result<()> {
     let content = match ext {
         FileExt::Yaml => serde_yaml::to_string(&config)?,
         FileExt::Json => serde_json::to_string_pretty(&config)?,
@@ -41,7 +45,7 @@ pub fn write_config(config: &config::Config, path: impl AsRef<Path>, ext: &FileE
     Ok(())
 }
 
-pub fn read_config(location: impl AsRef<str>) -> Result<config::Config> {
+pub fn read_config(location: impl AsRef<str>) -> Result<config::types::Config> {
     match Url::parse(location.as_ref()) {
         Ok(url) => {
             // as remote url

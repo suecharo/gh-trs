@@ -162,10 +162,10 @@ pub enum FileType {
 }
 
 impl FileType {
-    pub fn new_from_file_type(file_type: &config::FileType) -> Self {
+    pub fn new_from_file_type(file_type: &config::types::FileType) -> Self {
         match file_type {
-            config::FileType::Primary => FileType::PrimaryDescriptor,
-            config::FileType::Secondary => FileType::SecondaryDescriptor,
+            config::types::FileType::Primary => FileType::PrimaryDescriptor,
+            config::types::FileType::Secondary => FileType::SecondaryDescriptor,
         }
     }
 }
@@ -214,7 +214,7 @@ pub struct Tool {
 
 impl Tool {
     pub fn new(
-        config: &config::Config,
+        config: &config::types::Config,
         owner: impl AsRef<str>,
         name: impl AsRef<str>,
     ) -> Result<Self> {
@@ -248,7 +248,7 @@ impl Tool {
     /// If the same version already exists, it will be overwritten.
     pub fn add_new_tool_version(
         &mut self,
-        config: &config::Config,
+        config: &config::types::Config,
         owner: impl AsRef<str>,
         name: impl AsRef<str>,
         verified: bool,
@@ -285,7 +285,7 @@ pub struct ToolVersion {
 
 impl ToolVersion {
     pub fn new(
-        config: &config::Config,
+        config: &config::types::Config,
         owner: impl AsRef<str>,
         name: impl AsRef<str>,
         verified: bool,
@@ -375,12 +375,12 @@ pub enum DescriptorType {
 }
 
 impl DescriptorType {
-    fn new(wf_type: &config::LanguageType) -> Self {
+    fn new(wf_type: &config::types::LanguageType) -> Self {
         match wf_type {
-            config::LanguageType::Cwl => DescriptorType::Cwl,
-            config::LanguageType::Wdl => DescriptorType::Wdl,
-            config::LanguageType::Nfl => DescriptorType::Nfl,
-            config::LanguageType::Smk => DescriptorType::Smk,
+            config::types::LanguageType::Cwl => DescriptorType::Cwl,
+            config::types::LanguageType::Wdl => DescriptorType::Wdl,
+            config::types::LanguageType::Nfl => DescriptorType::Nfl,
+            config::types::LanguageType::Smk => DescriptorType::Smk,
         }
     }
 }
@@ -413,7 +413,7 @@ pub struct FileWrapper {
 #[cfg(not(tarpaulin_include))]
 mod tests {
     use super::*;
-    use crate::config_io;
+    use crate::config;
 
     #[test]
     fn test_new_or_update_service_info() -> Result<()> {
@@ -449,9 +449,9 @@ mod tests {
 
     #[test]
     fn test_file_type_new_from_file_type() -> Result<()> {
-        let file_type = FileType::new_from_file_type(&config::FileType::Primary);
+        let file_type = FileType::new_from_file_type(&config::types::FileType::Primary);
         assert_eq!(file_type, FileType::PrimaryDescriptor);
-        let file_type = FileType::new_from_file_type(&config::FileType::Secondary);
+        let file_type = FileType::new_from_file_type(&config::types::FileType::Secondary);
         assert_eq!(file_type, FileType::SecondaryDescriptor);
         Ok(())
     }
@@ -470,7 +470,7 @@ mod tests {
 
     #[test]
     fn test_tool_new() -> Result<()> {
-        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
+        let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         let tool = Tool::new(&config, "test_owner", "test_name")?;
 
         let expect = serde_json::from_str::<Tool>(
@@ -498,7 +498,7 @@ mod tests {
 
     #[test]
     fn test_tool_add_new_tool_version() -> Result<()> {
-        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
+        let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         let mut tool = Tool::new(&config, "test_owner", "test_name")?;
         tool.add_new_tool_version(&config, "test_owner", "test_name", true)?;
         assert_eq!(tool.versions.len(), 1);
@@ -542,7 +542,7 @@ mod tests {
 
     #[test]
     fn test_tool_version_new() -> Result<()> {
-        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
+        let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         ToolVersion::new(&config, "test_owner", "test_name", true)?;
         //         let expect = serde_json::from_str::<ToolVersion>(
         //             r#"
@@ -565,7 +565,7 @@ mod tests {
 
     #[test]
     fn test_tool_version_version() -> Result<()> {
-        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
+        let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         let tool_version = ToolVersion::new(&config, "test_owner", "test_name", true)?;
         let version = tool_version.version();
         assert_eq!(version, "1.0.0");

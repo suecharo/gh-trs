@@ -19,7 +19,7 @@ pub struct TestResult {
 }
 
 pub fn test(
-    configs: &Vec<config::Config>,
+    configs: &Vec<config::types::Config>,
     wes_loc: &Option<Url>,
     docker_host: &Url,
     ignore_fail: bool,

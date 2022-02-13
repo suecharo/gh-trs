@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TrsResponse {
-    pub gh_trs_config: HashMap<(Uuid, String), config::Config>,
+    pub gh_trs_config: HashMap<(Uuid, String), config::types::Config>,
     pub service_info: trs::ServiceInfo,
     pub tool_classes: Vec<trs::ToolClass>,
     pub tools: Vec<trs::Tool>,
@@ -50,7 +50,7 @@ impl TrsResponse {
         &mut self,
         owner: impl AsRef<str>,
         name: impl AsRef<str>,
-        config: &config::Config,
+        config: &config::types::Config,
         verified: bool,
     ) -> Result<()> {
         match self.tools.iter_mut().find(|t| t.id == config.id) {
@@ -188,7 +188,7 @@ fn generate_tool_classes(trs_endpoint: &trs_api::TrsEndpoint) -> Result<Vec<trs:
     }
 }
 
-fn generate_descriptor(config: &config::Config) -> Result<trs::FileWrapper> {
+fn generate_descriptor(config: &config::types::Config) -> Result<trs::FileWrapper> {
     let primary_wf = config.workflow.primary_wf()?;
     let (content, checksum) = match remote::fetch_raw_content(&primary_wf.url) {
         Ok(content) => {
@@ -204,7 +204,7 @@ fn generate_descriptor(config: &config::Config) -> Result<trs::FileWrapper> {
     })
 }
 
-fn generate_files(config: &config::Config) -> Result<Vec<trs::ToolFile>> {
+fn generate_files(config: &config::types::Config) -> Result<Vec<trs::ToolFile>> {
     Ok(config
         .workflow
         .files
@@ -223,7 +223,7 @@ fn generate_files(config: &config::Config) -> Result<Vec<trs::ToolFile>> {
         .collect())
 }
 
-fn generate_tests(config: &config::Config) -> Result<Vec<trs::FileWrapper>> {
+fn generate_tests(config: &config::types::Config) -> Result<Vec<trs::FileWrapper>> {
     Ok(config
         .workflow
         .testing
@@ -243,7 +243,7 @@ fn generate_tests(config: &config::Config) -> Result<Vec<trs::FileWrapper>> {
 #[cfg(not(tarpaulin_include))]
 mod tests {
     use super::*;
-    use crate::config_io;
+    use crate::config;
 
     #[test]
     fn test_trs_response_new() -> Result<()> {
@@ -271,14 +271,14 @@ mod tests {
 
     #[test]
     fn test_generate_descriptor() -> Result<()> {
-        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
+        let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         generate_descriptor(&config)?;
         Ok(())
     }
 
     #[test]
     fn test_generate_files() -> Result<()> {
-        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
+        let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         let files = generate_files(&config)?;
         let expect = serde_json::from_str::<Vec<trs::ToolFile>>(
             r#"
@@ -315,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_generate_tests() -> Result<()> {
-        let config = config_io::read_config("./tests/test_config_CWL_validated.yml")?;
+        let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         let tests = generate_tests(&config)?;
         let expect = serde_json::from_str::<Vec<trs::FileWrapper>>(
             r#"

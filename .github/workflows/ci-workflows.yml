@@ -1,7 +1,7 @@
 name: ci-workflows
 
 on:
-  deployment: {}
+  page_build: {}
   # push:
   #   branches:
   #     - gh-pages

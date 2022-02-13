@@ -288,7 +288,90 @@ $ gh-trs publish --repo <owner/name> --branch gh-pages --with-test --from-trs ht
 
 ## Continuous testing (CI/CD)
 
-TODO
+The GitHub Action ([`actions/gh-trs-action`](https://github.com/marketplace/actions/gh-trs-action?version=v1)) for continuous testing are published.
+
+The inputs of this action are the following:
+
+- `gh-token`: GitHub Personal Access Token
+- `repo`: **Optional** GitHub repository to publish to. (e.g., `owner/name`, default: your repository)
+- `branch`: **Optional** GitHub branch to publish to. (default: `gh-pages`)
+- `trs-endpoint`: **Optional** TRS endpoint to get the gh-trs configuration files. (default: your default trs endpoint)
+
+If you want to specify these inputs, use the `with` context (docs., https://docs.github.com/ja/actions/using-workflows/workflow-syntax-for-github-actions#) like:
+
+```yaml
+jobs:
+  test-and-publish:
+    steps:
+      - name: gh-trs-action
+        uses: suecharo/gh-trs-action@v1
+        with:
+          gh-token: ${{ secrets.GITHUB_TOKEN }}
+          repo: suecharo/gh-trs
+          branch: gh-pages
+          trs-endpoint: https://suecharo.github.io/gh-trs/
+```
+
+These inputs are **Optional**, and if not specified, default values based on your repository will be used.
+
+In this action, the following commands will be executed:
+
+```bash
+$ gh-trs publish --verbose --with-test --repo ${{ inputs.repo }} --branch ${{ inputs.branch }} --from-trs ${{ inputs.trs-endpoint }}
+```
+
+The test results will then be uploaded to GitHub Actions as an artifact named `gh-trs-test-logs`.
+Also, if the tests are run is published as CI, the URL of the relevant run of GitHub Actions will be set in the `verified_source` field in the TRS response.
+
+Below we provide the recipes for the two patterns of GitHub Actions.
+
+### Page build trigger
+
+This is a recipe for running CI in response to local execution.
+
+```yaml
+name: page-build-ci
+
+on:
+  page_build: {}
+
+jobs:
+  test-and-publish:
+    runs-on: ubuntu-latest
+    if: "! contains(github.event.head_commit.message, 'in CI')"
+    steps:
+      - name: gh-trs-action
+        uses: suecharo/gh-trs-action@v1
+        with:
+          gh-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+With this action is placed, when a command like the one below is executed in the local environment, CI will be launched:
+
+```bash
+$ gh-trs publish --repo suecharo/gh-trs ./tests/test_config_CWL.yml
+```
+
+### Schedule trigger
+
+```yaml
+name: schedule-ci
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" // every Sunday at midnight
+
+jobs:
+  test-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: gh-trs-action
+        uses: suecharo/gh-trs-action@v1
+        with:
+          gh-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+With this action is placed, the CI will be executed based on the schedule.
 
 ## Acknowledgement
 

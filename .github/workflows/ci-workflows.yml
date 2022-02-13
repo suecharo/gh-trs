@@ -2,9 +2,6 @@ name: ci-workflows
 
 on:
   page_build: {}
-  # push:
-  #   branches:
-  #     - gh-pages
   workflow_dispatch: {}
   # schedule:
   #   - cron: "0 0 * * 0" // every Sunday at midnight
@@ -18,7 +15,6 @@ jobs:
       - name: "Download gh-trs binary from artifact"
         id: download-binary-artifact
         run: |
-          echo {{ github.event.head_commit.message }}
           RUN_ID=`gh run --repo suecharo/gh-trs list --workflow build_binary --json databaseId --jq .[0].databaseId`
           gh run --repo suecharo/gh-trs download ${RUN_ID} -n gh-trs
           chmod +x gh-trs
@@ -35,15 +31,12 @@ jobs:
       - name: "Run tests and publish"
         id: test-and-publish
         run: |
-          echo ${SAPPORO_RUN_DIR}
-          sleep 60s # wait for GitHub to finish pages-build-deployment action
           mkdir -p ./test-logs
-          ./gh-trs publish --verbose --with-test --repo suecharo/gh-trs --branch gh-pages --from-trs https://suecharo.github.io/gh-trs/ 2>&1 | tee ./test-logs/gh-trs.log
+          SAPPORO_RUN_DIR=${GITHUB_WORKSPACE}/test-results ./gh-trs publish --verbose --with-test --repo suecharo/gh-trs --branch gh-pages --from-trs https://suecharo.github.io/gh-trs/ 2>&1 | tee ./test-logs/gh-trs.log
           exit ${PIPESTATUS[0]}
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SAPPORO_RUN_DIR: ${GITHUB_WORKSPACE}/test-results
 
       - name: "List test results"
         run: ls -lR ./test-results > ./test-logs/results-list.txt

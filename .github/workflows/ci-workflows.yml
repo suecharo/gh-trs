@@ -35,11 +35,12 @@ jobs:
         run: |
           sleep 60s # wait for GitHub to finish pages-build-deployment action
           mkdir -p ./test-logs
-          SAPPORO_RUN_DIR=${GITHUB_WORKSPACE}/test-results ./gh-trs publish --verbose --with-test --repo suecharo/gh-trs --branch gh-pages --from-trs https://suecharo.github.io/gh-trs/ 2>&1 | tee ./test-logs/gh-trs.log
+          ./gh-trs publish --verbose --with-test --repo suecharo/gh-trs --branch gh-pages --from-trs https://suecharo.github.io/gh-trs/ 2>&1 | tee ./test-logs/gh-trs.log
           exit ${PIPESTATUS[0]}
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SAPPORO_RUN_DI: ${GITHUB_WORKSPACE}/test-results
 
       - name: "List test results"
         run: ls -lR ./test-results > ./test-logs/results-list.txt

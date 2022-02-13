@@ -49,5 +49,5 @@ jobs:
           if-no-files-found: ignore
 
       - name: "Check test status"
-        if: ${{ steps.test.outcome != 'success' }}
+        if: ${{ steps.test-and-publish.outcome != 'success' }}
         run: exit 1

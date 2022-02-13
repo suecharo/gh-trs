@@ -63,7 +63,7 @@ pub struct Organization {
 }
 
 impl ServiceInfo {
-    fn new(owner: impl AsRef<str>, name: impl AsRef<str>) -> Result<Self> {
+    pub fn new(owner: impl AsRef<str>, name: impl AsRef<str>) -> Result<Self> {
         let created_at = Utc::now();
         Ok(Self {
             id: format!("io.github.{}.{}", owner.as_ref(), name.as_ref()),
@@ -375,7 +375,7 @@ pub enum DescriptorType {
 }
 
 impl DescriptorType {
-    fn new(wf_type: &config::types::LanguageType) -> Self {
+    pub fn new(wf_type: &config::types::LanguageType) -> Self {
         match wf_type {
             config::types::LanguageType::Cwl => DescriptorType::Cwl,
             config::types::LanguageType::Wdl => DescriptorType::Wdl,
@@ -387,7 +387,7 @@ impl DescriptorType {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
-enum DescriptorTypeWithPlain {
+pub enum DescriptorTypeWithPlain {
     Cwl,
     Wdl,
     Nfl,

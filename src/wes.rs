@@ -225,20 +225,20 @@ pub fn wf_url(wf: &config::types::Workflow) -> Result<String> {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct AttachedFile {
+pub struct AttachedFile {
     file_name: PathBuf,
     file_url: Url,
 }
 
 impl AttachedFile {
-    fn new_from_file(file: &config::types::File) -> Self {
+    pub fn new_from_file(file: &config::types::File) -> Self {
         Self {
             file_name: file.target.clone().unwrap().clone(),
             file_url: file.url.clone(),
         }
     }
 
-    fn new_from_test_file(test_file: &config::types::TestFile) -> Self {
+    pub fn new_from_test_file(test_file: &config::types::TestFile) -> Self {
         Self {
             file_name: test_file.target.clone().unwrap().clone(),
             file_url: test_file.url.clone(),

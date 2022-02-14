@@ -65,7 +65,7 @@ pub fn make_template(
     Ok(())
 }
 
-fn obtain_wf_files(
+pub fn obtain_wf_files(
     gh_token: impl AsRef<str>,
     primary_wf: &raw_url::RawUrl,
 ) -> Result<Vec<config::types::File>> {

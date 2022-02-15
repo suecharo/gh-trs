@@ -90,7 +90,22 @@ pub fn start_wes(docker_host: &Url) -> Result<()> {
         "Stdout from docker:\n{}",
         String::from_utf8_lossy(&output.stdout).trim()
     );
-    thread::sleep(time::Duration::from_secs(3));
+
+    // health check
+    let mut retry = 0;
+    while retry < 5 {
+        match sapporo_health_check() {
+            Ok(_) => break,
+            Err(_) => thread::sleep(time::Duration::from_secs(2)),
+        }
+        retry += 1;
+    }
+    ensure!(
+        retry < 5,
+        "Failed to start the sapporo-service: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
     Ok(())
 }
 
@@ -152,8 +167,25 @@ pub fn check_wes_running(docker_host: &Url) -> Result<bool> {
     }
 }
 
+pub fn sapporo_health_check() -> Result<()> {
+    let wes_loc = Url::parse(&default_wes_location())?;
+    let url = Url::parse(&format!("{}/service-info", wes_loc.as_str().trim()))?;
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .get(url.as_str())
+        .header(reqwest::header::ACCEPT, "application/json")
+        .send()?;
+    ensure!(
+        response.status().is_success(),
+        "Failed to get service-info with status: {} from {}",
+        response.status(),
+        url.as_str()
+    );
+    Ok(())
+}
+
 pub fn get_supported_wes_versions(wes_loc: &Url) -> Result<Vec<String>> {
-    let url = wes_loc.join("/service-info")?;
+    let url = Url::parse(&format!("{}/service-info", wes_loc.as_str().trim()))?;
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(url.as_str())
@@ -273,7 +305,7 @@ pub fn wf_attachment(
 }
 
 pub fn post_run(wes_loc: &Url, form: multipart::Form) -> Result<String> {
-    let url = wes_loc.join("/runs")?;
+    let url = Url::parse(&format!("{}/runs", wes_loc.as_str().trim()))?;
     let client = reqwest::blocking::Client::new();
     let response = client
         .post(url.as_str())
@@ -324,7 +356,11 @@ impl RunStatus {
 }
 
 pub fn get_run_status(wes_loc: &Url, run_id: impl AsRef<str>) -> Result<RunStatus> {
-    let url = wes_loc.join(&format!("/runs/{}/status", run_id.as_ref()))?;
+    let url = Url::parse(&format!(
+        "{}/runs/{}/status",
+        wes_loc.as_str().trim(),
+        run_id.as_ref()
+    ))?;
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(url.as_str())
@@ -348,7 +384,11 @@ pub fn get_run_status(wes_loc: &Url, run_id: impl AsRef<str>) -> Result<RunStatu
 }
 
 pub fn get_run_log(wes_loc: &Url, run_id: impl AsRef<str>) -> Result<Value> {
-    let url = wes_loc.join(&format!("/runs/{}", run_id.as_ref()))?;
+    let url = Url::parse(&format!(
+        "{}/runs/{}",
+        wes_loc.as_str().trim(),
+        run_id.as_ref()
+    ))?;
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(url.as_str())
@@ -405,8 +445,8 @@ mod tests {
     fn test_get_supported_wes_versions() -> Result<()> {
         let docker_host = Url::parse("unix:///var/run/docker.sock")?;
         start_wes(&docker_host)?;
-        let wf_loc = Url::parse(&default_wes_location())?;
-        let supported_wes_versions = get_supported_wes_versions(&wf_loc)?;
+        let wes_loc = Url::parse(&default_wes_location())?;
+        let supported_wes_versions = get_supported_wes_versions(&wes_loc)?;
         assert!(supported_wes_versions.len() > 0);
         stop_wes(&docker_host)?;
         Ok(())
@@ -416,10 +456,10 @@ mod tests {
     fn test_post_run() -> Result<()> {
         let docker_host = Url::parse("unix:///var/run/docker.sock")?;
         start_wes(&docker_host)?;
-        let wf_loc = Url::parse(&default_wes_location())?;
+        let wes_loc = Url::parse(&default_wes_location())?;
         let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         let form = test_case_to_form(&config.workflow, &config.workflow.testing[0])?;
-        let run_id = post_run(&wf_loc, form)?;
+        let run_id = post_run(&wes_loc, form)?;
         assert!(run_id.len() > 0);
         stop_wes(&docker_host)?;
         Ok(())

@@ -34,7 +34,7 @@ pub fn sapporo_run_dir() -> Result<String> {
 #[cfg(not(tarpaulin_include))]
 pub fn in_ci() -> bool {
     dotenv().ok();
-    env::var("GITHUB_ACTIONS").is_ok()
+    env::var("CI").is_ok()
 }
 
 #[cfg(not(tarpaulin_include))]

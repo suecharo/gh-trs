@@ -2,7 +2,7 @@ use crate::config;
 use crate::remote;
 use crate::trs;
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{bail, Result};
 use log::debug;
 use serde_json;
 use serde_yaml;
@@ -62,13 +62,8 @@ pub fn read_config(location: impl AsRef<str>) -> Result<config::types::Config> {
 }
 
 pub fn find_config_loc_recursively_from_trs(trs_loc: impl AsRef<str>) -> Result<Vec<String>> {
-    let trs_loc = Url::parse(&format!("{}/", trs_loc.as_ref().trim().trim_matches('/')))?;
-    let trs_endpoint = trs::api::TrsEndpoint { url: trs_loc };
-    let service_info = trs::api::get_service_info(&trs_endpoint)?;
-    ensure!(
-        service_info.r#type.artifact == "gh-trs" && service_info.r#type.version == "2.0.1",
-        "gh-trs only supports gh-trs 2.0.1 as a TRS endpoint"
-    );
+    let trs_endpoint = trs::api::TrsEndpoint::new_from_url(&Url::parse(trs_loc.as_ref())?)?;
+    trs_endpoint.is_valid()?;
     let config_locs: Vec<String> = trs::api::get_tools(&trs_endpoint)?
         .into_iter()
         .flat_map(|tool| tool.versions)

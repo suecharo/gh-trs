@@ -40,7 +40,7 @@ impl TrsEndpoint {
 /// /service-info -> trs::types::ServiceInfo
 pub fn get_service_info(trs_endpoint: &TrsEndpoint) -> Result<trs::types::ServiceInfo> {
     let url = Url::parse(&format!(
-        "{}/service_info",
+        "{}/service-info",
         trs_endpoint.url.as_str().trim().trim_matches('/')
     ))?;
     let body = get_request(&url)?;

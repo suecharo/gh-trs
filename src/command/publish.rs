@@ -21,7 +21,7 @@ pub fn publish(
         .map_err(|e| anyhow!("Failed to get repo: {}/{} caused by: {}", owner, name, e))?;
 
     info!(
-        "Publishing to repo: {}/{} branch: {}",
+        "Publishing to repo: {}/{}, branch: {}",
         &owner,
         &name,
         branch.as_ref(),

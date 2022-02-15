@@ -12,7 +12,7 @@ use url::Url;
 pub enum Args {
     /// Make a template for the gh-trs configuration file.
     MakeTemplate {
-        /// Location of the primary workflow document.
+        /// Location of the primary workflow document. (only hosted on GitHub)
         workflow_location: Url,
 
         /// GitHub Personal Access Token.
@@ -28,7 +28,7 @@ pub enum Args {
         verbose: bool,
     },
 
-    /// Validate the gh-trs configuration file.
+    /// Validate the schema and contents of the gh-trs configuration file.
     Validate {
         /// Location of the gh-trs configuration files (local file path or remote URL).
         #[structopt(default_value = "gh-trs-config.yml")]
@@ -77,11 +77,11 @@ pub enum Args {
         #[structopt(long = "gh-token")]
         github_token: Option<String>,
 
-        /// GitHub Repository to publish to. (e.g. owner/name)
+        /// GitHub repository to publish the TRS response to. (format: <owner>/<repo>)
         #[structopt(short, long, required = true)]
         repo: String,
 
-        /// GitHub branch to publish to.
+        /// GitHub branch to publish the TRS response to.
         #[structopt(short, long, default_value = "gh-pages")]
         branch: String,
 
@@ -99,8 +99,8 @@ pub enum Args {
         docker_host: Url,
 
         /// Recursively get the gh-trs configuration files from the TRS endpoint and publish them.
-        /// It is mainly intended to be tested and published all at once in a CI environment.
-        /// If you use this option, specify the TRS endpoint for `config_location`.
+        /// This option is used to test and publish all workflows in a CI environment.
+        /// If you use this option, specify the TRS endpoint for `config_locations`.
         #[structopt(long)]
         from_trs: bool,
 

@@ -4,7 +4,6 @@ use crate::raw_url;
 
 use anyhow::{ensure, Context, Result};
 use log::{debug, info};
-use serde_yaml;
 use std::collections::{HashMap, HashSet};
 
 #[cfg(not(tarpaulin_include))]
@@ -17,19 +16,18 @@ pub fn validate(
     let mut configs = Vec::new();
 
     for config_loc in config_locs {
-        info!("Validating config file: {}", config_loc.as_ref());
+        info!("Validating {}", config_loc.as_ref());
         let mut config = config::io::read_config(config_loc.as_ref())?;
-        debug!("config:\n{:#?}", &config);
 
         validate_authors(&config.authors)?;
         validate_language(&config.workflow.language)?;
         validate_wf_name(&config.workflow.name)?;
         validate_and_update_workflow(&gh_token, &mut config)?;
 
-        debug!("Updated config:\n{}", serde_yaml::to_string(&config)?);
+        debug!("updated config: {:?}", config);
+
         configs.push(config);
     }
-
     Ok(configs)
 }
 

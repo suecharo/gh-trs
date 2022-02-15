@@ -169,7 +169,10 @@ pub fn check_wes_running(docker_host: &Url) -> Result<bool> {
 
 pub fn sapporo_health_check() -> Result<()> {
     let wes_loc = Url::parse(&default_wes_location())?;
-    let url = Url::parse(&format!("{}/service-info", wes_loc.as_str().trim()))?;
+    let url = Url::parse(&format!(
+        "{}/service-info",
+        wes_loc.as_str().trim().trim_end_matches('/')
+    ))?;
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(url.as_str())
@@ -185,7 +188,10 @@ pub fn sapporo_health_check() -> Result<()> {
 }
 
 pub fn get_supported_wes_versions(wes_loc: &Url) -> Result<Vec<String>> {
-    let url = Url::parse(&format!("{}/service-info", wes_loc.as_str().trim()))?;
+    let url = Url::parse(&format!(
+        "{}/service-info",
+        wes_loc.as_str().trim().trim_end_matches('/')
+    ))?;
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(url.as_str())
@@ -305,7 +311,10 @@ pub fn wf_attachment(
 }
 
 pub fn post_run(wes_loc: &Url, form: multipart::Form) -> Result<String> {
-    let url = Url::parse(&format!("{}/runs", wes_loc.as_str().trim()))?;
+    let url = Url::parse(&format!(
+        "{}/runs",
+        wes_loc.as_str().trim().trim_end_matches('/')
+    ))?;
     let client = reqwest::blocking::Client::new();
     let response = client
         .post(url.as_str())
@@ -358,7 +367,7 @@ impl RunStatus {
 pub fn get_run_status(wes_loc: &Url, run_id: impl AsRef<str>) -> Result<RunStatus> {
     let url = Url::parse(&format!(
         "{}/runs/{}/status",
-        wes_loc.as_str().trim(),
+        wes_loc.as_str().trim().trim_end_matches('/'),
         run_id.as_ref()
     ))?;
     let client = reqwest::blocking::Client::new();
@@ -386,7 +395,7 @@ pub fn get_run_status(wes_loc: &Url, run_id: impl AsRef<str>) -> Result<RunStatu
 pub fn get_run_log(wes_loc: &Url, run_id: impl AsRef<str>) -> Result<Value> {
     let url = Url::parse(&format!(
         "{}/runs/{}",
-        wes_loc.as_str().trim(),
+        wes_loc.as_str().trim().trim_end_matches('/'),
         run_id.as_ref()
     ))?;
     let client = reqwest::blocking::Client::new();

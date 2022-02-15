@@ -43,14 +43,16 @@ pub fn test(
     );
 
     let in_ci = env::in_ci();
+
     for config in configs {
+        info!(
+            "Test workflow_id: {}, version: {}",
+            config.id, config.version
+        );
         let mut test_results = vec![];
         for test_case in &config.workflow.testing {
-            let test_title = format!(
-                "workflow_id: {}, version: {}, test_id: {}",
-                config.id, config.version, test_case.id
-            );
-            info!("Testing {}", test_title);
+            info!("Testing test case: {}", test_case.id);
+
             let form = wes::test_case_to_form(&config.workflow, test_case)?;
             debug!("Form:\n{:#?}", &form);
             let run_id = wes::post_run(&wes_loc, form)?;
@@ -77,11 +79,14 @@ pub fn test(
             }
             match status {
                 wes::RunStatus::Complete => {
-                    info!("Complete {}", test_title);
+                    info!("Complete test case: {}", test_case.id);
                     debug!("Run log:\n{}", run_log);
                 }
                 wes::RunStatus::Failed => {
-                    info!("Failed {}. Run log:\n{}", test_title, run_log);
+                    info!(
+                        "Failed test case: {} with run_log:\n{}",
+                        test_case.id, run_log
+                    );
                 }
                 _ => {
                     unreachable!("WES run status: {:?}", status);
@@ -95,20 +100,22 @@ pub fn test(
         }
         match check_test_results(&test_results) {
             Ok(()) => {
-                info!("All tests passed");
+                info!(
+                    "Passed all test cases in workflow_id: {}, version: {}",
+                    config.id, config.version
+                );
             }
             Err(e) => {
                 if ignore_fail {
                     warn!("{}, but ignore_fail is true", e);
                 } else {
-                    bail!("{}", e);
+                    bail!(e);
                 }
             }
         }
     }
 
     wes::stop_wes(&docker_host)?;
-
     Ok(())
 }
 

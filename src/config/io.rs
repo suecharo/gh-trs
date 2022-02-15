@@ -62,14 +62,8 @@ pub fn read_config(location: impl AsRef<str>) -> Result<config::types::Config> {
 }
 
 pub fn find_config_loc_recursively_from_trs(trs_loc: impl AsRef<str>) -> Result<Vec<String>> {
-    let trs_loc = if trs_loc.as_ref().ends_with("/") {
-        trs_loc.as_ref().to_string()
-    } else {
-        format!("{}/", trs_loc.as_ref())
-    };
-    let trs_endpoint = trs::api::TrsEndpoint {
-        url: Url::parse(&trs_loc)?,
-    };
+    let trs_loc = Url::parse(&format!("{}/", trs_loc.as_ref().trim().trim_matches('/')))?;
+    let trs_endpoint = trs::api::TrsEndpoint { url: trs_loc };
     let service_info = trs::api::get_service_info(&trs_endpoint)?;
     ensure!(
         service_info.r#type.artifact == "gh-trs" && service_info.r#type.version == "2.0.1",

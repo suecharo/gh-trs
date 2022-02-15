@@ -435,7 +435,6 @@ pub fn update_ref(
     Ok(())
 }
 
-#[allow(dead_code)]
 pub fn create_branch(
     gh_token: impl AsRef<str>,
     owner: impl AsRef<str>,

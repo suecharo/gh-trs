@@ -99,7 +99,7 @@ fn main() -> Result<()> {
             ..
         } => {
             let config_locations = if from_trs {
-                info!("Run in gh-trs from_trs mode");
+                info!("Run gh-trs in from_trs mode");
                 info!("TRS endpoint: {}", config_locations[0]);
                 match gh_trs::config::io::find_config_loc_recursively_from_trs(&config_locations[0])
                 {

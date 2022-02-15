@@ -18,14 +18,11 @@ pub fn make_template(
 ) -> Result<()> {
     let gh_token = env::github_token(gh_token)?;
 
-    info!(
-        "Making a template from workflow location: {}",
-        wf_loc.as_str()
-    );
+    info!("Making a template from {}", wf_loc.as_str());
     let primary_wf = raw_url::RawUrl::new(&gh_token, wf_loc, None, None)?;
 
-    let wf_id = Uuid::new_v4();
-    let wf_version = "1.0.0".to_string();
+    let id = Uuid::new_v4();
+    let version = "1.0.0".to_string();
     let author = config::types::Author {
         github_account: config::types::Author::new_from_api(&gh_token)?.github_account,
         name: None,
@@ -45,8 +42,8 @@ pub fn make_template(
     let testing = vec![config::types::Testing::default()];
 
     let config = config::types::Config {
-        id: wf_id,
-        version: wf_version,
+        id,
+        version,
         license: None,
         authors: vec![author],
         workflow: config::types::Workflow {
@@ -57,11 +54,10 @@ pub fn make_template(
             testing,
         },
     };
-    debug!("config:\n{:#?}", config);
+    debug!("template config: {:?}", config);
 
     let file_ext = config::io::parse_file_ext(&output)?;
     config::io::write_config(&config, &output, &file_ext)?;
-
     Ok(())
 }
 

@@ -347,7 +347,7 @@ dependencies = [
 
 [[package]]
 name = "gh-trs"
-version = "1.1.7"
+version = "1.1.8"
 dependencies = [
  "anyhow",
  "base64",

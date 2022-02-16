@@ -18,6 +18,7 @@ pub struct Config {
     pub version: String,
     pub license: Option<String>,
     pub authors: Vec<Author>,
+    pub zenodo: Option<Zenodo>,
     pub workflow: Workflow,
 }
 
@@ -280,6 +281,14 @@ pub enum TestFileType {
     WfParams,
     WfEngineParams,
     Other,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct Zenodo {
+    url: Url,
+    id: u64,
+    doi: String,
+    concept_doi: String,
 }
 
 #[cfg(test)]

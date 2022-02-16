@@ -46,6 +46,7 @@ pub fn make_template(
         version,
         license: None,
         authors: vec![author],
+        zenodo: None,
         workflow: config::types::Workflow {
             name: wf_name,
             readme,

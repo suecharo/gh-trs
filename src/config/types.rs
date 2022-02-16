@@ -285,10 +285,10 @@ pub enum TestFileType {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Zenodo {
-    url: Url,
-    id: u64,
-    doi: String,
-    concept_doi: String,
+    pub url: Url,
+    pub id: u64,
+    pub doi: String,
+    pub concept_doi: String,
 }
 
 #[cfg(test)]

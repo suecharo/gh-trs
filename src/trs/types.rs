@@ -259,7 +259,21 @@ impl Tool {
             .into_iter()
             .filter(|v| v.version() != config.version)
             .collect::<Vec<ToolVersion>>();
-        versions.push(ToolVersion::new(&config, &owner, &name, verified)?);
+        let has_same_version = self.versions.iter().any(|v| v.version() == config.version);
+        if has_same_version {
+            // update
+            let mut same_version = self
+                .versions
+                .iter()
+                .find(|v| v.version() == config.version)
+                .unwrap()
+                .clone();
+            same_version.update(config, &owner, &name, verified)?;
+            versions.push(same_version);
+        } else {
+            // new
+            versions.push(ToolVersion::new(config, &owner, &name, verified)?);
+        }
         self.versions = versions;
         Ok(())
     }
@@ -337,6 +351,65 @@ impl ToolVersion {
             signed: None,
             included_apps: None,
         })
+    }
+
+    pub fn update(
+        &mut self,
+        config: &config::types::Config,
+        owner: impl AsRef<str>,
+        name: impl AsRef<str>,
+        verified: bool,
+    ) -> Result<()> {
+        let new_verified_source = if verified {
+            if env::in_ci() {
+                match env::gh_actions_url() {
+                    Ok(url) => Some(vec![url.to_string()]),
+                    Err(_) => None,
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        let merged_verified_source =
+            match (self.verified_source.clone(), new_verified_source.clone()) {
+                (Some(prev), Some(new)) => Some(prev.into_iter().chain(new).collect()),
+                (Some(prev), None) => Some(prev),
+                (None, Some(new)) => Some(new),
+                (None, None) => None,
+            };
+
+        self.author = Some(
+            config
+                .authors
+                .iter()
+                .map(|a| a.github_account.clone())
+                .collect::<Vec<String>>(),
+        );
+        self.name = Some(config.workflow.name.clone());
+        self.url = Url::parse(&format!(
+            "https://{}.github.io/{}/tools/{}/versions/{}",
+            owner.as_ref(),
+            name.as_ref(),
+            config.id.to_string(),
+            &config.version
+        ))?;
+        self.id = config.id;
+        self.descriptor_type = Some(vec![DescriptorType::new(
+            &config
+                .workflow
+                .language
+                .r#type
+                .clone()
+                .ok_or(anyhow!("No language type"))?,
+        )]);
+        self.verified = match merged_verified_source {
+            Some(_) => Some(true),
+            None => Some(false),
+        };
+        self.verified_source = merged_verified_source;
+        Ok(())
     }
 
     pub fn version(&self) -> String {

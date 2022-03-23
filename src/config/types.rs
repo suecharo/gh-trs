@@ -129,7 +129,7 @@ impl File {
     ) -> Result<()> {
         self.url = raw_url::RawUrl::new(gh_token, &self.url, branch_memo, commit_memo)
             .with_context(|| format!("Failed to update URL: {} to raw URL", self.url.as_ref()))?
-            .to_url()?;
+            .to_url(&raw_url::UrlType::Commit)?;
         Ok(())
     }
 
@@ -250,7 +250,7 @@ impl TestFile {
     ) -> Result<()> {
         match raw_url::RawUrl::new(gh_token, &self.url, branch_memo, commit_memo) {
             Ok(raw_url) => {
-                self.url = raw_url.to_url()?;
+                self.url = raw_url.to_url(&raw_url::UrlType::Commit)?;
             }
             Err(_) => {
                 // do nothing.

@@ -15,6 +15,7 @@ pub fn make_template(
     wf_loc: &Url,
     gh_token: &Option<impl AsRef<str>>,
     output: impl AsRef<Path>,
+    url_type: raw_url::UrlType,
 ) -> Result<()> {
     let gh_token = env::github_token(gh_token)?;
 
@@ -36,9 +37,9 @@ pub fn make_template(
         None,
         None,
     )?
-    .to_url()?;
-    let language = inspect::inspect_wf_type_version(&primary_wf.to_url()?)?;
-    let files = obtain_wf_files(&gh_token, &primary_wf)?;
+    .to_url(&url_type)?;
+    let language = inspect::inspect_wf_type_version(&primary_wf.to_url(&url_type)?)?;
+    let files = obtain_wf_files(&gh_token, &primary_wf, &url_type)?;
     let testing = vec![config::types::Testing::default()];
 
     let config = config::types::Config {
@@ -65,10 +66,11 @@ pub fn make_template(
 pub fn obtain_wf_files(
     gh_token: impl AsRef<str>,
     primary_wf: &raw_url::RawUrl,
+    url_type: &raw_url::UrlType,
 ) -> Result<Vec<config::types::File>> {
-    let primary_wf_url = primary_wf.to_url()?;
+    let primary_wf_url = primary_wf.to_url(url_type)?;
     let base_dir = primary_wf.base_dir()?;
-    let base_url = primary_wf.to_base_url()?;
+    let base_url = primary_wf.to_base_url(url_type)?;
     let files = github_api::get_file_list_recursive(
         gh_token,
         &primary_wf.owner,
@@ -107,7 +109,7 @@ mod tests {
             None,
             None,
         )?;
-        let files = obtain_wf_files(&gh_token, &primary_wf)?;
+        let files = obtain_wf_files(&gh_token, &primary_wf, &raw_url::UrlType::Commit)?;
         assert_eq!(files.len(), 3);
         Ok(())
     }

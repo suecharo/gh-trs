@@ -83,7 +83,7 @@ pub fn validate_and_update_workflow(
         Some(&mut commit_memo),
     )
     .context("Failed to convert readme to raw url")?
-    .to_url()?;
+    .to_url(&raw_url::UrlType::Commit)?;
 
     ensure!(
         config.workflow.primary_wf().is_ok(),

@@ -23,6 +23,10 @@ pub enum Args {
         #[structopt(short, long, parse(from_os_str), default_value = "gh-trs-config.yml")]
         output: PathBuf,
 
+        /// Use branch instead of commit_hash in the generated GitHub raw URL
+        #[structopt(long)]
+        use_branch_url: bool,
+
         /// Verbose mode.
         #[structopt(short, long)]
         verbose: bool,
@@ -131,6 +135,7 @@ mod tests {
                 )?,
                 github_token: None,
                 output: PathBuf::from("gh-trs-config.yml"),
+                use_branch_url: false,
                 verbose: false,
             }
         );

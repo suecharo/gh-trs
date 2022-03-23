@@ -14,6 +14,11 @@ pub struct RawUrl {
     pub file_path: PathBuf,
 }
 
+pub enum UrlType {
+    Branch,
+    Commit,
+}
+
 impl RawUrl {
     /// Parse the workflow location.
     /// The workflow location should be in the format of:
@@ -116,22 +121,32 @@ impl RawUrl {
             .to_path_buf())
     }
 
-    pub fn to_url(&self) -> Result<Url> {
+    // UrlType::Branch
+    // -> https://raw.githubusercontent.com/suecharo/gh-trs/main/README.md
+    // UrlType::Commit
+    // -> https://raw.githubusercontent.com/suecharo/gh-trs/<commit_hash>/README.md
+    pub fn to_url(&self, url_type: &UrlType) -> Result<Url> {
         Ok(Url::parse(&format!(
             "https://raw.githubusercontent.com/{}/{}/{}/{}",
             self.owner,
             self.name,
-            self.commit,
+            match url_type {
+                UrlType::Branch => &self.branch,
+                UrlType::Commit => &self.commit,
+            },
             self.file_path.to_string_lossy()
         ))?)
     }
 
-    pub fn to_base_url(&self) -> Result<Url> {
+    pub fn to_base_url(&self, url_type: &UrlType) -> Result<Url> {
         Ok(Url::parse(&format!(
             "https://raw.githubusercontent.com/{}/{}/{}/{}/",
             self.owner,
             self.name,
-            self.commit,
+            match url_type {
+                UrlType::Branch => &self.branch,
+                UrlType::Commit => &self.commit,
+            },
             self.file_path
                 .parent()
                 .ok_or(anyhow!(
@@ -303,7 +318,7 @@ mod tests {
             &file_path.to_string_lossy()
         ))?;
         let raw_url = RawUrl::new(&gh_token, &url, None, None)?;
-        let to_url = raw_url.to_url()?;
+        let to_url = raw_url.to_url(&UrlType::Commit)?;
         assert_eq!(
             to_url,
             Url::parse(&format!(
@@ -332,7 +347,7 @@ mod tests {
             &file_path.to_string_lossy()
         ))?;
         let raw_url = RawUrl::new(&gh_token, &url, None, None)?;
-        let to_url = raw_url.to_base_url()?;
+        let to_url = raw_url.to_base_url(&UrlType::Commit)?;
         assert_eq!(
             to_url,
             Url::parse(&format!(

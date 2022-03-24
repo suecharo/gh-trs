@@ -164,7 +164,7 @@ An explanation of the validation rules for some fields in the gh-trs configurati
 - `id`: ID of the workflow. The `make-template` command generates it. If you want to update an existing workflow, fill in the ID of the existing workflow.
 - `version`: Version in the form `x.y.z`.
 - `authors`: List of authors.
-- `workflow.name`: Please fill freely. It must be alphanumeric or contain \_, -, or space.
+- `workflow.name`: Please fill freely. Allowed characters are `a-z`, `A-Z`, `0-9`, `~!@#$%^&*()_+-={}[]|:;,.<>?`, and space.
 - `workflow.readme`: It is used to `describe` field of the workflow. Use any URL you like.
 - `workflow.language`: `CWL`, `WDL`, `NFL`, and `SMK` are supported.
 - `workflow.files`: The list of files. Files specified as `type: secondary` will be placed in the execution directory with `target` as the path at workflow execution time.

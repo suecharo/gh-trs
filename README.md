@@ -2,6 +2,7 @@
 
 [![Apache License](https://img.shields.io/badge/license-Apache%202.0-orange.svg?style=flat&color=important)](http://www.apache.org/licenses/LICENSE-2.0)
 [![test](https://github.com/suecharo/gh-trs/actions/workflows/tarpaulin.yml/badge.svg?branch=main)](https://github.com/suecharo/gh-trs/actions/workflows/tarpaulin.yml)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsuecharo%2Fgh-trs.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsuecharo%2Fgh-trs?ref=badge_shield)
 
 CLI tool for publishing workflows as the [GA4GH Tool Registry Service (TRS) API](https://www.ga4gh.org/news/tool-registry-service-api-enabling-an-interoperable-library-of-genomics-analysis-tools/) and testing workflows using GitHub.
 
@@ -381,3 +382,6 @@ The `gh-trs` is partially supported by JSPS KAKENHI Grant Numbers 20J22439.
 
 [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0).
 See the [LICENSE](https://github.com/suecharo/gh-trs/blob/main/LICENSE).
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsuecharo%2Fgh-trs.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsuecharo%2Fgh-trs?ref=badge_large)

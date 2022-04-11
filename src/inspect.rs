@@ -108,7 +108,7 @@ pub fn inspect_cwl_version(wf_content: impl AsRef<str>) -> Result<String> {
     match cwl_docs.contains_key("cwlVersion") {
         true => match cwl_docs
             .get("cwlVersion")
-            .ok_or(anyhow!("Failed to parse cwlVersion"))?
+            .ok_or_else(|| anyhow!("Failed to parse cwlVersion"))?
         {
             serde_yaml::Value::String(version) => Ok(version.to_string()),
             _ => Ok("v1.0".to_string()),

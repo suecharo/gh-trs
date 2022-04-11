@@ -40,7 +40,7 @@ pub fn write_config(
         FileExt::Json => serde_json::to_string_pretty(&config)?,
     };
     let mut buffer = BufWriter::new(fs::File::create(path)?);
-    buffer.write(content.as_bytes())?;
+    buffer.write_all(content.as_bytes())?;
 
     Ok(())
 }

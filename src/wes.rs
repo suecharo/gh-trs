@@ -10,6 +10,7 @@ use serde_json::Value;
 use std::env as std_env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::str::FromStr;
 use std::thread;
 use std::time;
 use url::Url;
@@ -32,12 +33,12 @@ pub fn default_wes_location() -> String {
 pub fn start_wes(docker_host: &Url) -> Result<()> {
     let status = check_wes_running(docker_host)?;
     if status {
-        info!("The sapporo-service is already running. So skip starting it.");
+        info!("sapporo-service is already running. So skip starting it.");
         return Ok(());
     }
 
     info!(
-        "Starting the sapporo-service for gh-trs using docker_host: {}",
+        "Starting sapporo-service using docker_host: {}",
         docker_host.as_str()
     );
     let sapporo_run_dir = &env::sapporo_run_dir()?;
@@ -46,7 +47,7 @@ pub fn start_wes(docker_host: &Url) -> Result<()> {
         "{}:/tmp",
         std_env::temp_dir()
             .to_str()
-            .ok_or(anyhow!("Invalid path"))?
+            .ok_or_else(|| anyhow!("Invalid path"))?
     );
     let arg_run_dir_val = &format!("{}:{}", sapporo_run_dir, sapporo_run_dir);
     let (arg_network, arg_network_val) = if inside_docker_container() {
@@ -83,7 +84,7 @@ pub fn start_wes(docker_host: &Url) -> Result<()> {
     let output = process.wait_with_output()?;
     ensure!(
         output.status.success(),
-        "Failed to start the sapporo-service: {}",
+        "Failed to start sapporo-service:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     info!(
@@ -102,7 +103,7 @@ pub fn start_wes(docker_host: &Url) -> Result<()> {
     }
     ensure!(
         retry < 5,
-        "Failed to start the sapporo-service: {}",
+        "Failed to start sapporo-service:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
 
@@ -112,11 +113,11 @@ pub fn start_wes(docker_host: &Url) -> Result<()> {
 pub fn stop_wes(docker_host: &Url) -> Result<()> {
     let status = check_wes_running(docker_host)?;
     if !status {
-        info!("The sapporo-service for gh-trs is not running. So skip stopping it.");
+        info!("sapporo-service is not running. So skip stopping it.");
         return Ok(());
     }
 
-    info!("Stopping the sapporo-service for gh-trs");
+    info!("Stopping sapporo-service");
     let process = Command::new("docker")
         .args(&["-H", docker_host.as_str(), "kill", SAPPORO_SERVICE_NAME])
         .stdout(Stdio::piped())
@@ -126,7 +127,7 @@ pub fn stop_wes(docker_host: &Url) -> Result<()> {
     let output = process.wait_with_output()?;
     ensure!(
         output.status.success(),
-        "Failed to stop the sapporo-service: {}",
+        "Failed to stop the sapporo-service:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     info!(
@@ -159,10 +160,9 @@ pub fn check_wes_running(docker_host: &Url) -> Result<bool> {
             Ok(false)
         }
     } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
         bail!(
-            "Failed to check gh-trs's sapporo-service status: {}",
-            stderr
+            "Failed to check sapporo-service status:\n{}",
+            String::from_utf8_lossy(&output.stderr)
         );
     }
 }
@@ -204,14 +204,14 @@ pub fn get_supported_wes_versions(wes_loc: &Url) -> Result<Vec<String>> {
         url.as_str()
     );
     let res_body = response.json::<Value>()?;
-    let err_msg = "Failed to parse the response when getting service-info";
+    let err_msg = "Failed to parse the response to get service-info";
     let supported_wes_versions = res_body
         .get("supported_wes_versions")
-        .ok_or(anyhow!("{}", err_msg))?
+        .ok_or_else(|| anyhow!("{}", err_msg))?
         .as_array()
-        .ok_or(anyhow!("{}", err_msg))?
+        .ok_or_else(|| anyhow!("{}", err_msg))?
         .iter()
-        .map(|v| v.as_str().ok_or(anyhow!("{}", err_msg)))
+        .map(|v| v.as_str().ok_or_else(|| anyhow!("{}", err_msg)))
         .collect::<Result<Vec<_>>>()?
         .into_iter()
         .map(|v| v.to_string())
@@ -232,7 +232,7 @@ pub fn test_case_to_form(
             "workflow_type_version",
             wf.language.version.clone().unwrap(),
         )
-        .text("workflow_url", wf_url(&wf)?)
+        .text("workflow_url", wf_url(wf)?)
         .text(
             "workflow_engine_name",
             match wf.language.r#type.clone().unwrap() {
@@ -244,7 +244,7 @@ pub fn test_case_to_form(
         )
         .text("workflow_params", test_case.wf_params()?)
         .text("workflow_engine_parameters", test_case.wf_engine_params()?)
-        .text("workflow_attachment", wf_attachment(&wf, &test_case)?);
+        .text("workflow_attachment", wf_attachment(wf, test_case)?);
     Ok(form)
 }
 
@@ -271,14 +271,14 @@ pub struct AttachedFile {
 impl AttachedFile {
     pub fn new_from_file(file: &config::types::File) -> Self {
         Self {
-            file_name: file.target.clone().unwrap().clone(),
+            file_name: file.target.clone().unwrap(),
             file_url: file.url.clone(),
         }
     }
 
     pub fn new_from_test_file(test_file: &config::types::TestFile) -> Self {
         Self {
-            file_name: test_file.target.clone().unwrap().clone(),
+            file_name: test_file.target.clone().unwrap(),
             file_url: test_file.url.clone(),
         }
     }
@@ -290,21 +290,19 @@ pub fn wf_attachment(
 ) -> Result<String> {
     let mut attachments: Vec<AttachedFile> = vec![];
     wf.files.iter().for_each(|f| match &f.r#type {
-        config::types::FileType::Primary => match wf.language.r#type.clone().unwrap() {
-            config::types::LanguageType::Nfl => {
+        config::types::FileType::Primary => {
+            if wf.language.r#type.clone().unwrap() == config::types::LanguageType::Nfl {
                 attachments.push(AttachedFile::new_from_file(f));
             }
-            _ => {}
-        },
+        }
         config::types::FileType::Secondary => {
             attachments.push(AttachedFile::new_from_file(f));
         }
     });
-    test_case.files.iter().for_each(|f| match &f.r#type {
-        config::types::TestFileType::Other => {
+    test_case.files.iter().for_each(|f| {
+        if f.r#type == config::types::TestFileType::Other {
             attachments.push(AttachedFile::new_from_test_file(f));
         }
-        _ => {}
     });
     let attachments_json = serde_json::to_string(&attachments)?;
     Ok(attachments_json)
@@ -329,12 +327,12 @@ pub fn post_run(wes_loc: &Url, form: multipart::Form) -> Result<String> {
         url.as_str()
     );
     let res_body = response.json::<Value>()?;
-    let err_msg = "Failed to parse the response when posting run";
+    let err_msg = "Failed to parse the response to post a run";
     let run_id = res_body
         .get("run_id")
-        .ok_or(anyhow!(err_msg))?
+        .ok_or_else(|| anyhow!(err_msg))?
         .as_str()
-        .ok_or(anyhow!(err_msg))?
+        .ok_or_else(|| anyhow!(err_msg))?
         .to_string();
     Ok(run_id)
 }
@@ -346,8 +344,10 @@ pub enum RunStatus {
     Failed,
 }
 
-impl RunStatus {
-    pub fn from_str(s: &str) -> Result<RunStatus> {
+impl FromStr for RunStatus {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
         match s {
             "QUEUED" => Ok(RunStatus::Running),
             "INITIALIZING" => Ok(RunStatus::Running),
@@ -359,7 +359,7 @@ impl RunStatus {
             "CANCELED" => Ok(RunStatus::Failed),
             "CANCELING" => Ok(RunStatus::Failed),
             "UNKNOWN" => bail!("Unknown run status: {}", s),
-            _ => bail!("Unknown run status: {}", s),
+            _ => Err(anyhow!("Failed to parse run status")),
         }
     }
 }
@@ -381,15 +381,15 @@ pub fn get_run_status(wes_loc: &Url, run_id: impl AsRef<str>) -> Result<RunStatu
         response.status(),
         url.as_str()
     );
-    let err_msg = "Failed to parse the response when getting run status";
+    let err_msg = "Failed to parse the response to get run status";
     let res_body = response.json::<Value>()?;
-    Ok(RunStatus::from_str(
+    RunStatus::from_str(
         res_body
             .get("state")
-            .ok_or(anyhow!(err_msg))?
+            .ok_or_else(|| anyhow!(err_msg))?
             .as_str()
-            .ok_or(anyhow!(err_msg))?,
-    )?)
+            .ok_or_else(|| anyhow!(err_msg))?,
+    )
 }
 
 pub fn get_run_log(wes_loc: &Url, run_id: impl AsRef<str>) -> Result<Value> {
@@ -446,7 +446,10 @@ mod tests {
         let docker_host = Url::parse("unix:///var/run/invalid")?;
         let result = check_wes_running(&docker_host);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Cannot connect to the Docker daemon at unix:///var/run/invalid. Is the docker daemon running?"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot connect to the Docker daemon"));
         Ok(())
     }
 
@@ -456,7 +459,7 @@ mod tests {
         start_wes(&docker_host)?;
         let wes_loc = Url::parse(&default_wes_location())?;
         let supported_wes_versions = get_supported_wes_versions(&wes_loc)?;
-        assert!(supported_wes_versions.len() > 0);
+        assert!(!supported_wes_versions.is_empty());
         stop_wes(&docker_host)?;
         Ok(())
     }
@@ -469,7 +472,7 @@ mod tests {
         let config = config::io::read_config("./tests/test_config_CWL_validated.yml")?;
         let form = test_case_to_form(&config.workflow, &config.workflow.testing[0])?;
         let run_id = post_run(&wes_loc, form)?;
-        assert!(run_id.len() > 0);
+        assert!(!run_id.is_empty());
         stop_wes(&docker_host)?;
         Ok(())
     }

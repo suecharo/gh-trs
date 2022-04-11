@@ -27,7 +27,7 @@ pub fn test(
     let wes_loc = match wes_loc {
         Some(wes_loc) => wes_loc.clone(),
         None => {
-            wes::start_wes(&docker_host)?;
+            wes::start_wes(docker_host)?;
             Url::parse(&wes::default_wes_location())?
         }
     };
@@ -37,8 +37,7 @@ pub fn test(
     ensure!(
         supported_wes_versions
             .into_iter()
-            .find(|v| v == "sapporo-wes-1.0.1")
-            .is_some(),
+            .any(|v| &v == "sapporo-wes-1.0.1"),
         "gh-trs only supports WES version sapporo-wes-1.0.1"
     );
 
@@ -72,10 +71,10 @@ pub fn test(
                 fs::create_dir_all(
                     test_log_file
                         .parent()
-                        .ok_or(anyhow!("Failed to create dir"))?,
+                        .ok_or_else(|| anyhow!("Failed to create dir"))?,
                 )?;
                 let mut buffer = BufWriter::new(fs::File::create(&test_log_file)?);
-                buffer.write(run_log.as_bytes())?;
+                buffer.write_all(run_log.as_bytes())?;
             }
             match status {
                 wes::RunStatus::Complete => {
@@ -115,16 +114,16 @@ pub fn test(
         }
     }
 
-    wes::stop_wes(&docker_host)?;
+    wes::stop_wes(docker_host)?;
     Ok(())
 }
 
-pub fn check_test_results(test_results: &Vec<TestResult>) -> Result<()> {
+pub fn check_test_results(test_results: &[TestResult]) -> Result<()> {
     let failed_tests = test_results
         .iter()
         .filter(|r| r.status == wes::RunStatus::Failed)
         .collect::<Vec<_>>();
-    if failed_tests.len() > 0 {
+    if !failed_tests.is_empty() {
         bail!(
             "{} {} tests: {}",
             "Failed".red(),

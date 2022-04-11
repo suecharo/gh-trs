@@ -78,19 +78,19 @@ pub fn obtain_wf_files(
         &base_dir,
         &primary_wf.commit,
     )?;
-    Ok(files
+    files
         .into_iter()
         .map(|file| -> Result<config::types::File> {
             let target = file.strip_prefix(&base_dir)?;
-            let url = base_url.join(target.to_str().ok_or(anyhow!("Invalid URL"))?)?;
+            let url = base_url.join(target.to_str().ok_or_else(|| anyhow!("Invalid URL"))?)?;
             let r#type = if url == primary_wf_url {
                 config::types::FileType::Primary
             } else {
                 config::types::FileType::Secondary
             };
-            Ok(config::types::File::new(&url, &Some(target), r#type)?)
+            config::types::File::new(&url, &Some(target), r#type)
         })
-        .collect::<Result<Vec<_>>>()?)
+        .collect::<Result<Vec<_>>>()
 }
 
 #[cfg(test)]

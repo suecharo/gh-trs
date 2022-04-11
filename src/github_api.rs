@@ -14,7 +14,7 @@ pub fn parse_repo(repo: impl AsRef<str>) -> Result<(String, String)> {
         "Invalid repository name: {}. It should be in the format of `owner/name`.",
         repo.as_ref()
     );
-    let parts = repo.as_ref().split("/").collect::<Vec<_>>();
+    let parts = repo.as_ref().split('/').collect::<Vec<_>>();
     Ok((parts[0].to_string(), parts[1].to_string()))
 }
 
@@ -128,7 +128,7 @@ pub fn get_default_branch(
     name: impl AsRef<str>,
     memo: Option<&mut HashMap<String, String>>,
 ) -> Result<String> {
-    let err_message = "Failed to parse the response when getting default branch";
+    let err_message = "Failed to parse the response to get the default branch";
     match memo {
         Some(memo) => {
             let key = format!("{}/{}", owner.as_ref(), name.as_ref());
@@ -138,9 +138,9 @@ pub fn get_default_branch(
                     let res = get_repos(gh_token, owner, name)?;
                     let default_branch = res
                         .get("default_branch")
-                        .ok_or(anyhow!(err_message))?
+                        .ok_or_else(|| anyhow!(err_message))?
                         .as_str()
-                        .ok_or(anyhow!(err_message))?
+                        .ok_or_else(|| anyhow!(err_message))?
                         .to_string();
                     memo.insert(key, default_branch.clone());
                     Ok(default_branch)
@@ -151,9 +151,9 @@ pub fn get_default_branch(
             let res = get_repos(gh_token, owner, name)?;
             Ok(res
                 .get("default_branch")
-                .ok_or(anyhow!(err_message))?
+                .ok_or_else(|| anyhow!(err_message))?
                 .as_str()
-                .ok_or(anyhow!(err_message))?
+                .ok_or_else(|| anyhow!(err_message))?
                 .to_string())
         }
     }
@@ -182,7 +182,7 @@ pub fn get_latest_commit_sha(
     branch_name: impl AsRef<str>,
     memo: Option<&mut HashMap<String, String>>,
 ) -> Result<String> {
-    let err_message = "Failed to parse the response when getting latest commit sha";
+    let err_message = "Failed to parse the response to get a latest commit sha";
     match memo {
         Some(memo) => {
             let key = format!(
@@ -197,11 +197,11 @@ pub fn get_latest_commit_sha(
                     let res = get_branches(gh_token, owner, name, branch_name)?;
                     let latest_commit_hash = res
                         .get("commit")
-                        .ok_or(anyhow!(err_message))?
+                        .ok_or_else(|| anyhow!(err_message))?
                         .get("sha")
-                        .ok_or(anyhow!(err_message))?
+                        .ok_or_else(|| anyhow!(err_message))?
                         .as_str()
-                        .ok_or(anyhow!(err_message))?
+                        .ok_or_else(|| anyhow!(err_message))?
                         .to_string();
                     memo.insert(key, latest_commit_hash.clone());
                     Ok(latest_commit_hash)
@@ -212,11 +212,11 @@ pub fn get_latest_commit_sha(
             let res = get_branches(gh_token, owner, name, branch_name)?;
             Ok(res
                 .get("commit")
-                .ok_or(anyhow!(err_message))?
+                .ok_or_else(|| anyhow!(err_message))?
                 .get("sha")
-                .ok_or(anyhow!(err_message))?
+                .ok_or_else(|| anyhow!(err_message))?
                 .as_str()
-                .ok_or(anyhow!(err_message))?
+                .ok_or_else(|| anyhow!(err_message))?
                 .to_string())
         }
     }
@@ -230,24 +230,24 @@ pub fn get_user(gh_token: impl AsRef<str>) -> Result<Value> {
 
 pub fn get_author_info(gh_token: impl AsRef<str>) -> Result<(String, String, String)> {
     let res = get_user(gh_token)?;
-    let err_message = "Failed to parse the response when getting author";
+    let err_message = "Failed to parse the response to get the author";
     let gh_account = res
         .get("login")
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .as_str()
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .to_string();
     let name = res
         .get("name")
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .as_str()
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .to_string();
     let affiliation = res
         .get("company")
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .as_str()
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .to_string();
     Ok((gh_account, name, affiliation))
 }
@@ -264,12 +264,12 @@ pub fn get_readme_url(
         name.as_ref()
     ))?;
     let res = get_request(gh_token, &url, &[])?;
-    let err_message = "Failed to parse the response when getting readme url.";
+    let err_message = "Failed to parse the response to get a readme URL.";
     Ok(Url::parse(
         res.get("html_url")
-            .ok_or(anyhow!(err_message))?
+            .ok_or_else(|| anyhow!(err_message))?
             .as_str()
-            .ok_or(anyhow!(err_message))?,
+            .ok_or_else(|| anyhow!(err_message))?,
     )?)
 }
 
@@ -304,22 +304,22 @@ pub fn get_file_list_recursive(
         path,
         commit.as_ref(),
     )?;
-    let err_message = "Failed to parse the response when getting file list.";
+    let err_message = "Failed to parse the response to get the file list.";
     match res.as_array() {
         Some(files) => {
             let mut file_list: Vec<PathBuf> = Vec::new();
             for file in files {
                 let path = PathBuf::from(
                     file.get("path")
-                        .ok_or(anyhow!(err_message))?
+                        .ok_or_else(|| anyhow!(err_message))?
                         .as_str()
-                        .ok_or(anyhow!(err_message))?,
+                        .ok_or_else(|| anyhow!(err_message))?,
                 );
                 let r#type = file
                     .get("type")
-                    .ok_or(anyhow!(err_message))?
+                    .ok_or_else(|| anyhow!(err_message))?
                     .as_str()
-                    .ok_or(anyhow!(err_message))?;
+                    .ok_or_else(|| anyhow!(err_message))?;
                 match r#type {
                     "file" => file_list.push(path),
                     "dir" => {
@@ -383,14 +383,14 @@ pub fn get_branch_sha(
         name.as_ref(),
         format!("heads/{}", branch_name.as_ref()),
     )?;
-    let err_message = "Failed to parse the response when getting branch sha.";
+    let err_message = "Failed to parse the response to get the branch sha.";
     Ok(res
         .get("object")
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .get("sha")
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .as_str()
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .to_string())
 }
 
@@ -529,12 +529,12 @@ pub fn create_tree(
         }
     };
     let res = post_request(gh_token, &url, &body)?;
-    let err_message = "Failed to parse the response when creating tree.";
+    let err_message = "Failed to parse the response to create a tree.";
     Ok(res
         .get("sha")
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .as_str()
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .to_string())
 }
 
@@ -568,12 +568,12 @@ pub fn create_commit(
         }
     };
     let res = post_request(gh_token, &url, &body)?;
-    let err_message = "Failed to parse the response when creating commit.";
+    let err_message = "Failed to parse the response to create a commit.";
     Ok(res
         .get("sha")
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .as_str()
-        .ok_or(anyhow!(err_message))?
+        .ok_or_else(|| anyhow!(err_message))?
         .to_string())
 }
 

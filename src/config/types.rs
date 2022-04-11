@@ -58,7 +58,7 @@ impl Workflow {
             .files
             .iter()
             .find(|f| f.is_primary())
-            .ok_or(anyhow!("No primary workflow file"))?
+            .ok_or_else(|| anyhow!("No primary workflow file"))?
             .clone())
     }
 }
@@ -102,9 +102,9 @@ impl File {
             Some(target) => target.as_ref().to_path_buf(),
             None => url
                 .path_segments()
-                .ok_or(anyhow!("Invalid URL: {}", url.as_ref()))?
+                .ok_or_else(|| anyhow!("Invalid URL: {}", url.as_ref()))?
                 .last()
-                .ok_or(anyhow!("Invalid URL: {}", url.as_ref()))?
+                .ok_or_else(|| anyhow!("Invalid URL: {}", url.as_ref()))?
                 .to_string()
                 .into(),
         };
@@ -138,9 +138,9 @@ impl File {
             let target = self
                 .url
                 .path_segments()
-                .ok_or(anyhow!("Invalid URL: {}", self.url.as_ref()))?
+                .ok_or_else(|| anyhow!("Invalid URL: {}", self.url.as_ref()))?
                 .last()
-                .ok_or(anyhow!("Invalid URL: {}", self.url.as_ref()))?
+                .ok_or_else(|| anyhow!("Invalid URL: {}", self.url.as_ref()))?
                 .to_string()
                 .into();
             self.target = Some(target);
@@ -227,9 +227,9 @@ impl TestFile {
             Some(target) => target.as_ref().to_path_buf(),
             None => url
                 .path_segments()
-                .ok_or(anyhow!("Invalid URL: {}", url.as_ref()))?
+                .ok_or_else(|| anyhow!("Invalid URL: {}", url.as_ref()))?
                 .last()
-                .ok_or(anyhow!("Invalid URL: {}", url.as_ref()))?
+                .ok_or_else(|| anyhow!("Invalid URL: {}", url.as_ref()))?
                 .to_string()
                 .into(),
         };
@@ -248,13 +248,8 @@ impl TestFile {
         branch_memo: Option<&mut HashMap<String, String>>,
         commit_memo: Option<&mut HashMap<String, String>>,
     ) -> Result<()> {
-        match raw_url::RawUrl::new(gh_token, &self.url, branch_memo, commit_memo) {
-            Ok(raw_url) => {
-                self.url = raw_url.to_url(&raw_url::UrlType::Commit)?;
-            }
-            Err(_) => {
-                // do nothing.
-            }
+        if let Ok(raw_url) = raw_url::RawUrl::new(gh_token, &self.url, branch_memo, commit_memo) {
+            self.url = raw_url.to_url(&raw_url::UrlType::Commit)?;
         };
         Ok(())
     }
@@ -264,9 +259,9 @@ impl TestFile {
             let target = self
                 .url
                 .path_segments()
-                .ok_or(anyhow!("Invalid URL: {}", self.url.as_ref()))?
+                .ok_or_else(|| anyhow!("Invalid URL: {}", self.url.as_ref()))?
                 .last()
-                .ok_or(anyhow!("Invalid URL: {}", self.url.as_ref()))?
+                .ok_or_else(|| anyhow!("Invalid URL: {}", self.url.as_ref()))?
                 .to_string()
                 .into();
             self.target = Some(target);

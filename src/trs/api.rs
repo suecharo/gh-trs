@@ -45,10 +45,12 @@ impl TrsEndpoint {
     /// to: https://suecharo.github.io/gh-trs/
     pub fn new_from_tool_version_url(url: &Url) -> Result<Self> {
         let scheme = url.scheme();
-        let host = url.host_str().ok_or(anyhow!("Invalid url: {}", url))?;
+        let host = url
+            .host_str()
+            .ok_or_else(|| anyhow!("Invalid url: {}", url))?;
         let mut path_segments = url
             .path_segments()
-            .ok_or(anyhow!("Invalid url: {}", url))?
+            .ok_or_else(|| anyhow!("Invalid url: {}", url))?
             .map(|s| s.to_string())
             .collect::<Vec<_>>();
         path_segments.pop();
@@ -65,7 +67,7 @@ impl TrsEndpoint {
     }
 
     pub fn is_valid(&self) -> Result<()> {
-        let service_info = get_service_info(&self)?;
+        let service_info = get_service_info(self)?;
         ensure!(
             service_info.r#type.artifact == "gh-trs" && service_info.r#type.version == "2.0.1",
             "gh-trs only supports gh-trs 2.0.1 as a TRS endpoint"
@@ -88,15 +90,19 @@ impl TrsEndpoint {
     }
 
     pub fn all_versions(&self, wf_id: impl AsRef<str>) -> Result<Vec<String>> {
-        let tool = get_tool(&self, wf_id.as_ref())?;
+        let tool = get_tool(self, wf_id.as_ref())?;
         let versions: Vec<String> = tool
             .versions
             .into_iter()
             .map(|v| {
                 v.url
                     .path_segments()
-                    .ok_or(anyhow!("Invalid url: {}", v.url))
-                    .and_then(|segments| segments.last().ok_or(anyhow!("Invalid url: {}", v.url)))
+                    .ok_or_else(|| anyhow!("Invalid url: {}", v.url))
+                    .and_then(|segments| {
+                        segments
+                            .last()
+                            .ok_or_else(|| anyhow!("Invalid url: {}", v.url))
+                    })
                     .map(|s| s.to_string())
             })
             .collect::<Result<Vec<_>>>()?;

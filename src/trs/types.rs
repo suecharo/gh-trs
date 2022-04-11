@@ -80,7 +80,7 @@ impl ServiceInfo {
             contact_url: None,
             documentation_url: None,
             created_at: Some(created_at),
-            updated_at: Some(created_at.clone()),
+            updated_at: Some(created_at),
             environment: None,
             version: created_at.format("%Y%m%d%H%M%S").to_string(),
         })
@@ -229,7 +229,7 @@ impl Tool {
                 "https://{}.github.io/{}/tools/{}",
                 owner.as_ref(),
                 name.as_ref(),
-                config.id.to_string(),
+                config.id,
             ))?,
             id: config.id,
             aliases: None,
@@ -330,7 +330,7 @@ impl ToolVersion {
                 "https://{}.github.io/{}/tools/{}/versions/{}",
                 owner.as_ref(),
                 name.as_ref(),
-                config.id.to_string(),
+                config.id,
                 &config.version
             ))?,
             id: config.id,
@@ -342,7 +342,7 @@ impl ToolVersion {
                     .language
                     .r#type
                     .clone()
-                    .ok_or(anyhow!("No language type"))?,
+                    .ok_or_else(|| anyhow!("No language type"))?,
             )]),
             containerfile: None,
             meta_version: None,
@@ -372,13 +372,12 @@ impl ToolVersion {
         } else {
             None
         };
-        let merged_verified_source =
-            match (self.verified_source.clone(), new_verified_source.clone()) {
-                (Some(prev), Some(new)) => Some(prev.into_iter().chain(new).collect()),
-                (Some(prev), None) => Some(prev),
-                (None, Some(new)) => Some(new),
-                (None, None) => None,
-            };
+        let merged_verified_source = match (self.verified_source.clone(), new_verified_source) {
+            (Some(prev), Some(new)) => Some(prev.into_iter().chain(new).collect()),
+            (Some(prev), None) => Some(prev),
+            (None, Some(new)) => Some(new),
+            (None, None) => None,
+        };
 
         self.author = Some(
             config
@@ -392,7 +391,7 @@ impl ToolVersion {
             "https://{}.github.io/{}/tools/{}/versions/{}",
             owner.as_ref(),
             name.as_ref(),
-            config.id.to_string(),
+            config.id,
             &config.version
         ))?;
         self.id = config.id;
@@ -402,7 +401,7 @@ impl ToolVersion {
                 .language
                 .r#type
                 .clone()
-                .ok_or(anyhow!("No language type"))?,
+                .ok_or_else(|| anyhow!("No language type"))?,
         )]);
         self.verified = match merged_verified_source {
             Some(_) => Some(true),
@@ -414,8 +413,7 @@ impl ToolVersion {
 
     pub fn version(&self) -> String {
         let path_segments = self.url.path_segments().unwrap();
-        let version = path_segments.last().unwrap().to_string();
-        version
+        path_segments.last().unwrap().to_string()
     }
 }
 

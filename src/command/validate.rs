@@ -31,8 +31,8 @@ pub fn validate(
     Ok(configs)
 }
 
-pub fn validate_authors(authors: &Vec<config::types::Author>) -> Result<()> {
-    ensure!(authors.len() > 0, "No authors found in config file");
+pub fn validate_authors(authors: &[config::types::Author]) -> Result<()> {
+    ensure!(!authors.is_empty(), "No authors found in config file");
     ensure!(
         authors.len()
             == authors

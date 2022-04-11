@@ -39,7 +39,7 @@ impl RawUrl {
     ) -> Result<Self> {
         let host = url
             .host_str()
-            .ok_or(anyhow!("No host found in URL: {}", url))?;
+            .ok_or_else(|| anyhow!("No host found in URL: {}", url))?;
         ensure!(
             host == "github.com" || host == "raw.githubusercontent.com",
             "Only GitHub URLs are supported, your input URL: {}",
@@ -47,23 +47,23 @@ impl RawUrl {
         );
         let path_segments = url
             .path_segments()
-            .ok_or(anyhow!("Failed to parse URL path: {}", url))?
+            .ok_or_else(|| anyhow!("Failed to parse URL path: {}", url))?
             .collect::<Vec<_>>();
         let owner = path_segments
             .get(0)
-            .ok_or(anyhow!("No repo owner found in URL: {}", url))?
+            .ok_or_else(|| anyhow!("No repo owner found in URL: {}", url))?
             .to_string();
         let name = path_segments
             .get(1)
-            .ok_or(anyhow!("No repo name found in URL: {}", url))?
+            .ok_or_else(|| anyhow!("No repo name found in URL: {}", url))?
             .to_string();
         let branch_or_commit = match host {
             "github.com" => path_segments
                 .get(3)
-                .ok_or(anyhow!("No branch or commit found in URL: {}", url))?,
+                .ok_or_else(|| anyhow!("No branch or commit found in URL: {}", url))?,
             "raw.githubusercontent.com" => path_segments
                 .get(2)
-                .ok_or(anyhow!("No branch or commit found in URL: {}", url))?,
+                .ok_or_else(|| anyhow!("No branch or commit found in URL: {}", url))?,
             _ => unreachable!(),
         };
         let (branch, commit) = match is_commit_hash(&branch_or_commit) {
@@ -90,11 +90,11 @@ impl RawUrl {
             _ => unreachable!(),
         };
         Ok(Self {
-            owner: owner,
-            name: name,
-            branch: branch,
-            commit: commit,
-            file_path: file_path,
+            owner,
+            name,
+            branch,
+            commit,
+            file_path,
         })
     }
 
@@ -102,10 +102,12 @@ impl RawUrl {
         Ok(self
             .file_path
             .file_stem()
-            .ok_or(anyhow!(
-                "Failed to get file stem from {} ",
-                self.file_path.to_string_lossy()
-            ))?
+            .ok_or_else(|| {
+                anyhow!(
+                    "Failed to get file stem from {} ",
+                    self.file_path.to_string_lossy()
+                )
+            })?
             .to_string_lossy()
             .to_string())
     }
@@ -114,10 +116,12 @@ impl RawUrl {
         Ok(self
             .file_path
             .parent()
-            .ok_or(anyhow!(
-                "Failed to get parent dir from {} ",
-                self.file_path.to_string_lossy()
-            ))?
+            .ok_or_else(|| {
+                anyhow!(
+                    "Failed to get parent dir from {} ",
+                    self.file_path.to_string_lossy()
+                )
+            })?
             .to_path_buf())
     }
 
@@ -149,7 +153,7 @@ impl RawUrl {
             },
             self.file_path
                 .parent()
-                .ok_or(anyhow!(
+                .ok_or_else(|| anyhow!(
                     "Failed to get parent dir from {}",
                     self.file_path.to_string_lossy()
                 ))?
@@ -219,11 +223,11 @@ mod tests {
         let raw_url_4 = RawUrl::new(&gh_token, &url_4, None, None)?;
 
         let expect = RawUrl {
-            owner: owner,
-            name: name,
-            branch: branch,
-            commit: commit,
-            file_path: file_path,
+            owner,
+            name,
+            branch,
+            commit,
+            file_path,
         };
 
         assert_eq!(raw_url_1.owner, expect.owner);

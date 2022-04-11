@@ -41,7 +41,7 @@ pub fn publish(
         github_api::get_latest_commit_sha(&gh_token, &owner, &name, branch.as_ref(), None)?;
     let mut trs_response = trs::response::TrsResponse::new(&owner, &name)?;
     for config in configs {
-        trs_response.add(&owner, &name, &config, verified)?;
+        trs_response.add(&owner, &name, config, verified)?;
     }
     let trs_contents = trs_response.generate_contents()?;
     let new_tree_sha =

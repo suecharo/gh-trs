@@ -55,28 +55,24 @@ impl TrsResponse {
         match self.tools.iter_mut().find(|t| t.id == config.id) {
             Some(tool) => {
                 // update tool
-                tool.add_new_tool_version(&config, &owner, &name, verified)?;
+                tool.add_new_tool_version(config, &owner, &name, verified)?;
             }
             None => {
                 // create tool and add
-                let mut tool = trs::types::Tool::new(&config, &owner, &name)?;
-                tool.add_new_tool_version(&config, &owner, &name, verified)?;
+                let mut tool = trs::types::Tool::new(config, &owner, &name)?;
+                tool.add_new_tool_version(config, &owner, &name, verified)?;
                 self.tools.push(tool);
             }
         };
 
         self.tools_descriptor.insert(
             (config.id, config.version.clone()),
-            generate_descriptor(&config)?,
+            generate_descriptor(config)?,
         );
-        self.tools_files.insert(
-            (config.id, config.version.clone()),
-            generate_files(&config)?,
-        );
-        self.tools_tests.insert(
-            (config.id, config.version.clone()),
-            generate_tests(&config)?,
-        );
+        self.tools_files
+            .insert((config.id, config.version.clone()), generate_files(config)?);
+        self.tools_tests
+            .insert((config.id, config.version.clone()), generate_tests(config)?);
 
         self.gh_trs_config
             .insert((config.id, config.version.clone()), config.clone());
@@ -105,18 +101,9 @@ impl TrsResponse {
                 .iter()
                 .find(|v| &v.version() == version)
                 .unwrap();
-            let tools_descriptor = self
-                .tools_descriptor
-                .get(&(id.clone(), version.clone()))
-                .unwrap();
-            let tools_files = self
-                .tools_files
-                .get(&(id.clone(), version.clone()))
-                .unwrap();
-            let tools_tests = self
-                .tools_tests
-                .get(&(id.clone(), version.clone()))
-                .unwrap();
+            let tools_descriptor = self.tools_descriptor.get(&(*id, version.clone())).unwrap();
+            let tools_files = self.tools_files.get(&(*id, version.clone())).unwrap();
+            let tools_tests = self.tools_tests.get(&(*id, version.clone())).unwrap();
 
             let desc_type = config.workflow.language.r#type.clone().unwrap().to_string();
 
@@ -175,7 +162,7 @@ impl TrsResponse {
 pub fn generate_tool_classes(
     trs_endpoint: &trs::api::TrsEndpoint,
 ) -> Result<Vec<trs::types::ToolClass>> {
-    match trs::api::get_tool_classes(&trs_endpoint) {
+    match trs::api::get_tool_classes(trs_endpoint) {
         Ok(mut tool_classes) => {
             let has_workflow = tool_classes
                 .iter()
@@ -225,7 +212,7 @@ pub fn generate_files(config: &config::types::Config) -> Result<Vec<trs::types::
 }
 
 pub fn generate_tests(config: &config::types::Config) -> Result<Vec<trs::types::FileWrapper>> {
-    Ok(config
+    config
         .workflow
         .testing
         .iter()
@@ -237,7 +224,7 @@ pub fn generate_tests(config: &config::types::Config) -> Result<Vec<trs::types::
                 url: None,
             })
         })
-        .collect::<Result<Vec<_>>>()?)
+        .collect::<Result<Vec<_>>>()
 }
 
 #[cfg(test)]

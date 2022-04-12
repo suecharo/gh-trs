@@ -11,6 +11,8 @@ As feature:
 - Testing workflows based on the gh-trs configuration file
 - Publishing workflows to GitHub as GA4GH TRS API
 
+**Note that there is [ddbj/yevis-cli](https://github.com/ddbj/yevis-cli) as a more extended and well-maintained tool. Basically, I recommend using this.**
+
 ## Installation
 
 Use a single binary that is built without any dependencies:

@@ -85,12 +85,12 @@ pub fn validate_and_update_workflow(
         Some(&mut branch_memo),
         Some(&mut commit_memo),
     )
-    .context("Failed to convert readme to raw url")?
+    .context("Failed to convert readme url to raw url")?
     .to_url(&raw_url::UrlType::Commit)?;
 
     ensure!(
         config.workflow.primary_wf().is_ok(),
-        "Expected one primary workflow file."
+        "Expected to contain one primary workflow file."
     );
 
     for file in &mut config.workflow.files {

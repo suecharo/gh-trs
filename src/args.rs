@@ -10,6 +10,7 @@ use url::Url;
 )]
 #[structopt(setting(clap::AppSettings::ColoredHelp))]
 pub enum Args {
+    #[structopt(setting(clap::AppSettings::ColoredHelp))]
     /// Make a template for the gh-trs configuration file.
     MakeTemplate {
         /// Location of the primary workflow document. (only hosted on GitHub)
@@ -23,15 +24,16 @@ pub enum Args {
         #[structopt(short, long, parse(from_os_str), default_value = "gh-trs-config.yml")]
         output: PathBuf,
 
-        /// Use branch instead of commit_hash in the generated GitHub raw URL
+        /// Use commit_hash instead of branch in the generated GitHub raw URL.
         #[structopt(long)]
-        use_branch_url: bool,
+        use_commit_url: bool,
 
         /// Verbose mode.
         #[structopt(short, long)]
         verbose: bool,
     },
 
+    #[structopt(setting(clap::AppSettings::ColoredHelp))]
     /// Validate the schema and contents of the gh-trs configuration file.
     Validate {
         /// Location of the gh-trs configuration files (local file path or remote URL).
@@ -47,6 +49,7 @@ pub enum Args {
         verbose: bool,
     },
 
+    #[structopt(setting(clap::AppSettings::ColoredHelp))]
     /// Test the workflow based on the gh-trs configuration file.
     Test {
         /// Location of the gh-trs configuration files (local file path or remote URL).
@@ -57,7 +60,7 @@ pub enum Args {
         #[structopt(long = "gh-token")]
         github_token: Option<String>,
 
-        /// Location of WES in which to run the test.
+        /// Location of the WES where the test will be run.
         /// If not specified, `sapporo-service` will be started.
         #[structopt(short, long)]
         wes_location: Option<Url>,
@@ -71,6 +74,7 @@ pub enum Args {
         verbose: bool,
     },
 
+    #[structopt(setting(clap::AppSettings::ColoredHelp))]
     /// Publish the TRS response to GitHub.
     Publish {
         /// Location of the gh-trs configuration files (local file path or remote URL).
@@ -93,7 +97,7 @@ pub enum Args {
         #[structopt(long)]
         with_test: bool,
 
-        /// Location of WES in which to run the test.
+        /// Location of the WES where the test will be run.
         /// If not specified, `sapporo-service` will be started.
         #[structopt(short, long)]
         wes_location: Option<Url>,
@@ -135,7 +139,7 @@ mod tests {
                 )?,
                 github_token: None,
                 output: PathBuf::from("gh-trs-config.yml"),
-                use_branch_url: false,
+                use_commit_url: false,
                 verbose: false,
             }
         );

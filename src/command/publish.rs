@@ -78,7 +78,7 @@ pub fn publish(
     );
     info!("Please wait for GitHub Pages to be built and published (https://github.com/{}/{}/actions/workflows/pages/pages-build-deployment).", &owner, &name);
     info!(
-        "You can get TRS response like:\n    curl -L https://{}.github.io/{}/tools",
+        "You can get TRS response as:\n    curl -L https://{}.github.io/{}/tools",
         &owner, &name
     );
 

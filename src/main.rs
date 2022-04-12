@@ -23,7 +23,7 @@ fn main() -> Result<()> {
             workflow_location,
             github_token,
             output,
-            use_branch_url,
+            use_commit_url,
             ..
         } => {
             info!("{} make-template", "Running".green());
@@ -31,9 +31,9 @@ fn main() -> Result<()> {
                 &workflow_location,
                 &github_token,
                 &output,
-                match use_branch_url {
-                    true => gh_trs::raw_url::UrlType::Branch,
-                    false => gh_trs::raw_url::UrlType::Commit,
+                match use_commit_url {
+                    true => gh_trs::raw_url::UrlType::Commit,
+                    false => gh_trs::raw_url::UrlType::Branch,
                 },
             ) {
                 Ok(()) => info!("{} make-template", "Success".green()),

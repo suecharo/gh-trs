@@ -81,7 +81,7 @@ impl TrsEndpoint {
         wf_version: impl AsRef<str>,
     ) -> Result<Url> {
         let url = Url::parse(&format!(
-            "{}/tools/{}/versions/{}/gh-trs-config.json",
+            "{}tools/{}/versions/{}/gh-trs-config.json",
             self.url.as_str(),
             wf_id.as_ref(),
             wf_version.as_ref()

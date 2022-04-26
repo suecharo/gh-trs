@@ -161,6 +161,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
     fn test_get_request() -> Result<()> {
         let url = Url::parse("https://suecharo.github.io/gh-pages-rest-api-hosting/foo")?;
         get_request(&url)?;

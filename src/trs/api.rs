@@ -23,7 +23,7 @@ pub fn get_request(url: &Url) -> Result<String> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TrsEndpoint {
-    url: Url,
+    pub url: Url,
 }
 
 impl TrsEndpoint {

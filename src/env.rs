@@ -10,7 +10,7 @@ pub fn github_token(arg_token: &Option<impl AsRef<str>>) -> Result<String> {
         Some(token) => Ok(token.as_ref().to_string()),
         None => match env::var("GITHUB_TOKEN") {
             Ok(token) => Ok(token),
-            Err(_) => bail!("No GitHub token provided. Please set the environment variable `GITHUB_TOKEN` or pass the `--github-token` flag."),
+            Err(_) => bail!("No GitHub token provided. Please set the environment variable `GITHUB_TOKEN` or pass the `--gh-token` flag."),
         },
     }
 }

@@ -143,8 +143,8 @@ impl RawUrl {
     }
 
     pub fn to_base_url(&self, url_type: &UrlType) -> Result<Url> {
-        Ok(Url::parse(&format!(
-            "https://raw.githubusercontent.com/{}/{}/{}/{}/",
+        let path = format!(
+            "{}/{}/{}/{}",
             self.owner,
             self.name,
             match url_type {
@@ -158,7 +158,16 @@ impl RawUrl {
                     self.file_path.to_string_lossy()
                 ))?
                 .to_string_lossy()
-        ))?)
+        );
+        // remove trailing slash
+        let path = path.trim_end_matches('/');
+        // need to add a trailing slash to make it a valid URL
+        let url = Url::parse(&format!(
+            "
+            https://raw.githubusercontent.com/{}/",
+            path
+        ))?;
+        Ok(url)
     }
 }
 

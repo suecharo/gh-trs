@@ -313,7 +313,9 @@ pub fn post_run(wes_loc: &Url, form: multipart::Form) -> Result<String> {
         "{}/runs",
         wes_loc.as_str().trim().trim_end_matches('/')
     ))?;
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::blocking::Client::builder()
+        .timeout(time::Duration::from_secs(300))
+        .build()?;
     let response = client
         .post(url.as_str())
         .header(reqwest::header::ACCEPT, "application/json")
@@ -371,10 +373,19 @@ pub fn get_run_status(wes_loc: &Url, run_id: impl AsRef<str>) -> Result<RunStatu
         run_id.as_ref()
     ))?;
     let client = reqwest::blocking::Client::new();
-    let response = client
-        .get(url.as_str())
-        .header(reqwest::header::ACCEPT, "application/json")
-        .send()?;
+    let mut retry_count = 0;
+    let response = loop {
+        match client.get(url.as_str()).send() {
+            Ok(response) => break response,
+            Err(e) => {
+                retry_count += 1;
+                if retry_count > 3 {
+                    bail!("Failed to get run status: {}", e);
+                }
+                thread::sleep(time::Duration::from_secs(5));
+            }
+        }
+    };
     ensure!(
         response.status().is_success(),
         "Failed to get run status with status: {} from {}",

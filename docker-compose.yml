@@ -1,7 +1,7 @@
 version: "3.5"
 services:
   app:
-    image: ghcr.io/suecharo/gh-trs:1.1.16
+    image: ghcr.io/suecharo/gh-trs:1.1.17
     container_name: gh-trs
     volumes:
       - ${PWD}/.env:/app/.env

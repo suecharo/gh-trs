@@ -3,6 +3,10 @@
 [![Apache License](https://img.shields.io/badge/license-Apache%202.0-orange.svg?style=flat&color=important)](http://www.apache.org/licenses/LICENSE-2.0)
 [![test](https://github.com/suecharo/gh-trs/actions/workflows/tarpaulin.yml/badge.svg?branch=main)](https://github.com/suecharo/gh-trs/actions/workflows/tarpaulin.yml)
 
+**This repository has been merged into [Yevis-cli](https://github.com/ddbj/yevis-cli) and archived.**
+
+---
+
 CLI tool for publishing workflows as the [GA4GH Tool Registry Service (TRS) API](https://www.ga4gh.org/news/tool-registry-service-api-enabling-an-interoperable-library-of-genomics-analysis-tools/) and testing workflows using GitHub.
 
 As feature:
